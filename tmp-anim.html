@@ -1,0 +1,3700 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DinoSurvival - Dinosaur Survival</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #hud > * {
+            pointer-events: auto;
+        }
+
+        /* Health bar */
+        .health-bar {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff3333, #ff6666);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        /* Stamina bar */
+        .stamina-bar {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .stamina-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffaa00, #ffcc44);
+            border-radius: 8px;
+            transition: width 0.3s ease;
+        }
+
+        /* Hunger bar */
+        .hunger-bar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .hunger-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #44aa44, #66cc66);
+            border-radius: 8px;
+            transition: width 0.3s ease;
+        }
+
+        /* Thirst bar */
+        .thirst-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .thirst-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4488ff, #66aaff);
+            border-radius: 8px;
+            transition: width 0.3s ease;
+        }
+
+        /* Dinosaur name and stats */
+        .dino-stats {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .dino-stats h2 {
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .stat {
+            margin: 5px 0;
+        }
+
+        .stat-label {
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        /* Crosshair */
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .crosshair::before {
+            width: 2px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .crosshair::after {
+            width: 100%;
+            height: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Minimap */
+        .minimap {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .minimap-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .minimap-player {
+            background: #00ff00;
+            z-index: 2;
+        }
+
+        .minimap-dino {
+            background: #ff0000;
+        }
+
+        .minimap-food {
+            background: #ffff00;
+        }
+
+        .minimap-water {
+            background: #00ffff;
+        }
+
+        /* Action prompts */
+        .action-prompt {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        /* Chat */
+        .chat {
+            position: absolute;
+            bottom: 200px;
+            left: 20px;
+            width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
+
+        .chat-message {
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+            margin: 2px 0;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+
+        .chat-input {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 14px;
+        }
+
+        .chat-input input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .chat-input button {
+            padding: 8px 16px;
+            background: #44aa44;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Inventory */
+        .inventory {
+            position: absolute;
+            top: 20px;
+            right: 180px;
+            width: 200px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 10px;
+            color: white;
+            font-size: 13px;
+        }
+
+        .inventory h3 {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .inventory-item {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            margin: 2px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        .inventory-item .icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+
+        .inventory-item .icon.meat {
+            background: #ff4444;
+        }
+
+        .inventory-item .icon.berry {
+            background: #44ff44;
+        }
+
+        .inventory-item .icon.fish {
+            background: #4444ff;
+        }
+
+        .inventory-item .icon.insect {
+            background: #ffff44;
+        }
+
+        /* Death screen */
+        .death-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 200;
+        }
+
+        .death-screen.active {
+            display: flex;
+        }
+
+        .death-screen h1 {
+            color: #ff3333;
+            font-size: 72px;
+            margin-bottom: 20px;
+        }
+
+        .death-screen p {
+            color: white;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+
+        .death-screen button {
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #44aa44;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .death-screen button:hover {
+            background: #55bb55;
+        }
+
+        /* Menu */
+        .menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 300;
+        }
+
+        .menu.hidden {
+            display: none;
+        }
+
+        .menu h1 {
+            color: #ffcc00;
+            font-size: 64px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
+        }
+
+        .menu h2 {
+            color: #66aa66;
+            font-size: 24px;
+            margin-bottom: 40px;
+        }
+
+        .menu-section {
+            margin-bottom: 30px;
+        }
+
+        .menu-section h3 {
+            color: #cccccc;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .dino-selection {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .dino-card {
+            width: 120px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: 2px solid transparent;
+        }
+
+        .dino-card:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #ffcc00;
+            transform: translateY(-5px);
+        }
+
+        .dino-card.selected {
+            border-color: #ffcc00;
+            background: rgba(255, 204, 0, 0.2);
+        }
+
+        .dino-card .dino-icon {
+            width: 80px;
+            height: 60px;
+            margin: 0 auto 10px;
+            border-radius: 5px;
+        }
+
+        .dino-card .dino-name {
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .dino-card .dino-type {
+            color: #aaa;
+            font-size: 10px;
+        }
+
+        .dino-card .dino-tier {
+            color: #ffcc00;
+            font-size: 10px;
+        }
+
+        .name-input {
+            padding: 10px 20px;
+            font-size: 18px;
+            width: 300px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .name-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .start-btn {
+            padding: 15px 60px;
+            font-size: 24px;
+            background: #44aa44;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .start-btn:hover {
+            background: #55bb55;
+            transform: scale(1.05);
+        }
+
+        .start-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading */
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 400;
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .loading h2 {
+            color: #ffcc00;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .loading-bar {
+            width: 300px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .loading-fill {
+            height: 100%;
+            background: #ffcc00;
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* Controls */
+        .controls {
+            position: absolute;
+            bottom: 160px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .controls h4 {
+            margin-bottom: 5px;
+            color: #ffcc00;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            font-weight: bold;
+            margin: 0 2px;
+        }
+
+        /* Attack indicator */
+        .attack-indicator {
+            position: absolute;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 0, 0, 0.5);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .attack-indicator.active {
+            display: flex;
+        }
+
+        /* Eat indicator */
+        .eat-indicator {
+            position: absolute;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(0, 255, 0, 0.5);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .eat-indicator.active {
+            display: flex;
+        }
+
+        .menu-btn {
+            display: block;
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .menu-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .controls-list div { margin: 4px 0; font-size: 14px; }
+        .sprint-indicator {
+            position: absolute;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .sprint-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6600, #ff9900);
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+
+        /* Player count */
+        .player-count {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        /* Day/night cycle indicator */
+        .day-night-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 30px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        /* Water indicator */
+        .water-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 60px;
+            background: rgba(0, 0, 255, 0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        /* Distance indicator */
+        .distance-indicator {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 12px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        /* Sound toggle */
+        .sound-toggle {
+            position: absolute;
+            top: 20px;
+            right: 190px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* Settings */
+        .settings {
+            position: absolute;
+            top: 20px;
+            right: 190px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            display: none;
+            z-index: 200;
+            min-width: 200px;
+        }
+
+        .settings.active {
+            display: block;
+        }
+
+        .setting {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+        }
+
+        .setting label {
+            font-size: 12px;
+        }
+
+        .setting input[type="range"] {
+            width: 80px;
+        }
+
+        /* Leaderboard */
+        .leaderboard {
+            position: absolute;
+            top: 190px;
+            right: 20px;
+            width: 200px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 10px;
+            color: white;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .leaderboard h3 {
+            margin-bottom: 10px;
+            text-align: center;
+            color: #ffcc00;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .leaderboard-item.player {
+            color: #44ff44;
+        }
+
+        .leaderboard-item .kills {
+            color: #ff4444;
+        }
+
+        /* Ecosystem indicator */
+        .ecosystem {
+            position: absolute;
+            top: 190px;
+            left: 20px;
+            width: 200px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 10px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .ecosystem h3 {
+            margin-bottom: 10px;
+            text-align: center;
+            color: #44ff44;
+        }
+
+        .ecosystem-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+
+        /* Weather indicator */
+        .weather {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 80px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        /* Food count */
+        .food-count {
+            position: absolute;
+            bottom: 140px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+        }
+
+        /* Temperature indicator */
+        .temperature {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 100px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        /* Weather effects */
+        .rain-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            display: none;
+        }
+
+        .rain-effect.active {
+            display: block;
+        }
+
+        /* Fog effect */
+        .fog-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            display: none;
+        }
+
+        .fog-effect.active {
+            display: block;
+        }
+
+        .night-vision-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 60;
+            display: none;
+            background: radial-gradient(ellipse at center, rgba(0,255,0,0.08) 0%, rgba(0,255,0,0.15) 40%, rgba(0,100,0,0.3) 100%);
+        }
+        .night-vision-overlay.active {
+            display: block;
+        }
+
+        #callIndicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255,200,100,0.8);
+            font-size: 48px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+            text-shadow: 0 0 20px rgba(255,150,0,0.5);
+        }
+        #callIndicator.active {
+            opacity: 1;
+        }
+    
+/* AUTH SCREENS */
+#auth-overlay { position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;background:linear-gradient(135deg,#0a0a0a,#1a0a0a);display:flex;align-items:center;justify-content:center; }
+#auth-overlay.hidden { display:none; }
+.auth-screen { position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center; }
+.auth-screen.hidden { display:none; }
+.auth-box { background:rgba(20,15,10,0.96);border:1px solid rgba(255,100,0,0.3);border-radius:16px;padding:40px;width:400px;max-width:90vw;box-shadow:0 0 60px rgba(255,68,0,0.15); }
+.auth-box h1 { text-align:center;font-size:28px;color:#ff6600;margin-bottom:5px;text-shadow:0 0 20px rgba(255,102,0,0.3);letter-spacing:2px; }
+.auth-box h2 { text-align:center;font-size:14px;color:#888;margin-bottom:30px;font-weight:normal;letter-spacing:4px;text-transform:uppercase; }
+.auth-box label { display:block;color:#aaa;font-size:12px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px; }
+.auth-box input { width:100%;padding:12px 16px;margin-bottom:16px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,100,0,0.2);border-radius:8px;color:#fff;font-size:15px;outline:none;box-sizing:border-box; }
+.auth-box input:focus { border-color:#ff6600; }
+.auth-btn { width:100%;padding:14px;background:linear-gradient(135deg,#ff4400,#ff6600);border:none;border-radius:8px;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;letter-spacing:2px;text-transform:uppercase; }
+.auth-btn:hover { box-shadow:0 4px 20px rgba(255,68,0,0.4); }
+.auth-btn:disabled { opacity:0.5;cursor:not-allowed; }
+.auth-link { text-align:center;margin-top:16px;color:#666;font-size:13px; }
+.auth-link a { color:#ff8800;cursor:pointer;text-decoration:none; }
+.auth-link a:hover { color:#ffaa44; }
+.auth-error { text-align:center;color:#ff4444;font-size:13px;margin-bottom:12px;padding:8px;background:rgba(255,0,0,0.1);border-radius:6px; }
+.auth-success { color:#44ff44;background:rgba(0,255,0,0.1); }
+.auth-error.hidden, .auth-success.hidden { display:none; }
+.dino-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;overflow-y:auto;padding:10px;flex:1; }
+.dino-grid::-webkit-scrollbar { width:6px; }
+.dino-grid::-webkit-scrollbar-thumb { background:#ff6600;border-radius:3px; }
+.dino-card { background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;cursor:pointer;transition:all 0.2s; }
+.dino-card:hover { background:rgba(255,100,0,0.08);border-color:rgba(255,100,0,0.3); }
+.dino-card.selected { border-color:#ff6600;background:rgba(255,100,0,0.12); }
+.dino-icon { width:100%;height:70px;border-radius:8px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden; }
+.dino-emoji { font-size:30px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+.dino-tier-badge { position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.7);color:#ffaa00;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold; }
+.dino-preview-desc { text-align:center;color:#777;font-size:11px;font-style:italic;padding:4px 8px;background:rgba(0,0,0,0.2);border-radius:6px;line-height:1.4; }
+.dino-card-name { color:#fff;font-size:12px;font-weight:bold; }
+.dino-card-type { font-size:10px;padding:2px 6px;border-radius:8px;display:inline-block; }
+.dino-card-type.carnivore { background:rgba(255,50,50,0.2);color:#ff6666; }
+.dino-card-type.herbivore { background:rgba(50,255,50,0.2);color:#66ff66; }
+.phylo-bar { display:flex;gap:6px;flex-wrap:wrap;padding:10px; }
+.phylo-btn { padding:6px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;color:#aaa;cursor:pointer;font-size:12px; }
+.phylo-btn.active { background:#ff6600;border-color:#ff6600;color:#fff; }
+.dino-select-layout { display:flex;width:90vw;max-width:1200px;height:80vh;background:rgba(20,15,10,0.98);border-radius:16px;border:1px solid rgba(255,100,0,0.2);overflow:hidden; }
+.dino-select-side { width:200px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.05);padding:16px;display:flex;flex-direction:column; }
+.dino-select-title { color:#ff6600;font-size:18px;letter-spacing:2px;margin-bottom:12px; }
+.dino-main { flex:1;display:flex;flex-direction:column;overflow:hidden; }
+.dino-preview { width:260px;flex-shrink:0;border-left:1px solid rgba(255,255,255,0.05);padding:16px;display:flex;flex-direction:column;gap:10px; }
+.dino-preview-circle { width:100px;height:100px;border-radius:50%;margin:0 auto;border:3px solid rgba(255,100,0,0.3);display:flex;align-items:center;justify-content:center;font-size:40px; }
+.dino-preview-3d { width:100%;height:180px;border-radius:12px;margin:0 auto;overflow:hidden;background:rgba(0,0,0,0.3);border:1px solid rgba(255,100,0,0.15);position:relative; }
+.dino-preview-3d canvas { width:100% !important; height:100% !important; display:block; }
+.dino-preview-name { text-align:center;color:#fff;font-size:16px;font-weight:bold; }
+.dino-stat-row { display:grid;grid-template-columns:1fr 1fr;gap:4px; }
+.dino-stat-box { background:rgba(255,255,255,0.03);padding:6px;border-radius:6px;text-align:center; }
+.dino-stat-label { color:#888;font-size:9px;text-transform:uppercase; }
+.dino-stat-value { color:#fff;font-size:13px;font-weight:bold; }
+.color-swatches { display:flex;gap:4px;flex-wrap:wrap;justify-content:center; }
+.color-swatch { width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer; }
+.color-swatch.active { border-color:#fff; }
+.dino-name-field { text-align:center;padding:8px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,100,0,0.2);border-radius:8px;color:#fff;outline:none; }
+.dino-name-field:focus { border-color:#ff6600; }
+
+        #gameCursor {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1.5px solid rgba(0, 0, 0, 0.4);
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+        body.pointer-locked #gameCursor {
+            display: block;
+        }
+        body.pointer-locked {
+            cursor: none;
+        }
+
+</style>
+</head>
+<body>
+
+<!-- AUTH SYSTEM -->
+<div id="auth-overlay">
+  <div class="auth-screen" id="screen-login">
+    <div class="auth-box">
+      <h1>DinoSurvival</h1>
+      <h2>Survival of the Fittest</h2>
+      <div class="auth-error hidden" id="login-error"></div>
+      <label>Usuário</label>
+      <input type="text" id="login-user" placeholder="Nome de usuário">
+      <label>Senha</label>
+      <input type="password" id="login-pass" placeholder="Sua senha">
+      <button class="auth-btn" onclick="DinoAuth.login()">Entrar</button>
+      <div class="auth-link">Não tem conta? <a onclick="DinoAuth.show('register')">Registrar</a></div>
+    </div>
+  </div>
+  <div class="auth-screen hidden" id="screen-register">
+    <div class="auth-box">
+      <h1>DinoSurvival</h1>
+      <h2>Criar Conta</h2>
+      <div class="auth-error hidden" id="reg-error"></div>
+      <div class="auth-error auth-success hidden" id="reg-ok"></div>
+      <label>Usuário</label>
+      <input type="text" id="reg-user" placeholder="Escolha um nome">
+      <label>Email</label>
+      <input type="email" id="reg-email" placeholder="seu@email.com">
+      <label>Senha</label>
+      <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres">
+      <label>Confirmar</label>
+      <input type="password" id="reg-confirm" placeholder="Digite novamente">
+      <button class="auth-btn" onclick="DinoAuth.register()">Criar</button>
+      <div class="auth-link">Já tem conta? <a onclick="DinoAuth.show('login')">Entrar</a></div>
+    </div>
+  </div>
+  <div class="auth-screen hidden" id="screen-select">
+    <div class="dino-select-layout">
+      <div class="dino-select-side">
+        <div class="dino-select-title">🦖 Dinos</div>
+        <div class="phylo-bar" style="flex-direction:column;padding:0;">
+          <div class="phylo-btn active" data-phylo="todos" onclick="DinoAuth.filter('todos')">Todos</div>
+          <div class="phylo-btn" data-phylo="carnivore" onclick="DinoAuth.filter('carnivore')">Carnívoros</div>
+          <div class="phylo-btn" data-phylo="herbivore" onclick="DinoAuth.filter('herbivore')">Herbívoros</div>
+        </div>
+        <div style="margin-top:auto;"><button class="auth-btn" onclick="DinoAuth.logout()" style="font-size:11px;padding:8px;background:rgba(255,255,255,0.1);">Sair</button></div>
+      </div>
+      <div class="dino-main">
+        <div class="dino-grid" id="dino-grid"></div>
+      </div>
+      <div class="dino-preview">
+        <div class="dino-preview-3d" id="dino-preview-3d"></div>
+        <div class="dino-preview-name" id="dino-pname">Escolha um dinossauro</div>
+        <div style="text-align:center;color:#888;font-size:11px;" id="dino-ptier"></div>
+        <div class="dino-preview-desc" id="dino-pdesc">Selecione um dinossauro para ver seus atributos</div>
+        <div class="dino-stat-row">
+          <div class="dino-stat-box"><div class="dino-stat-label">Resistencia</div><div class="dino-stat-value" id="dino-php">-</div></div>
+          <div class="dino-stat-box"><div class="dino-stat-label">Folego</div><div class="dino-stat-value" id="dino-pstam">-</div></div>
+          <div class="dino-stat-box"><div class="dino-stat-label">Ameaca</div><div class="dino-stat-value" id="dino-patk">-</div></div>
+          <div class="dino-stat-box"><div class="dino-stat-label">Agilidade</div><div class="dino-stat-value" id="dino-pspd">-</div></div>
+        </div>
+        <input class="dino-name-field" id="dino-name" placeholder="Nome do dino" maxlength="20">
+        <button class="auth-btn" id="dino-start" onclick="DinoAuth.enter()" disabled>Entrar</button>
+      </div>
+    </div>
+  </div>
+  <div class="auth-screen hidden" id="screen-loading">
+    <div style="text-align:center;"><h1 style="color:#ff6600;letter-spacing:4px;">DinoSurvival</h1><div style="width:200px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin:20px auto;overflow:hidden;"><div style="height:100%;width:100%;background:linear-gradient(90deg,#ff4400,#ff6600);animation:loadBar 2s ease forwards;"></div></div><div style="color:#666;font-size:12px;">Carregando...</div></div>
+  </div>
+</div>
+<style>@keyframes loadBar { 0%{width:0%} 50%{width:70%} 100%{width:100%} }</style>
+
+    <!-- Menu -->
+    <div class="menu" id="menu">
+        <div id="menu-pre-game">
+            <h1>DINO SURVIVAL</h1>
+            <h2>Survival of the Fittest</h2>
+            <div class="menu-section">
+                <h3>Escolha seu Nome</h3>
+                <input type="text" class="name-input" id="playerName" placeholder="Seu Nome" maxlength="20">
+            </div>
+            <div class="menu-section">
+                <h3>Filogenia</h3>
+                <div class="dino-selection" id="phyloSelection">
+                    <div class="dino-card" data-phylo="all" onclick="selectPhylo('all')">
+                        <div class="dino-icon" style="background: linear-gradient(135deg, #ff4444, #44ff44, #4444ff);"></div>
+                        <div class="dino-name">Todos</div>
+                    </div>
+                    <div class="dino-card" data-phylo="herbivore" onclick="selectPhylo('herbivore')">
+                        <div class="dino-icon" style="background: linear-gradient(135deg, #44aa44, #66cc66);"></div>
+                        <div class="dino-name">Herbívoro</div>
+                    </div>
+                    <div class="dino-card" data-phylo="carnivore" onclick="selectPhylo('carnivore')">
+                        <div class="dino-icon" style="background: linear-gradient(135deg, #ff4444, #ff6666);"></div>
+                        <div class="dino-name">Carnívoro</div>
+                    </div>
+                    <div class="dino-card" data-phylo="flying" onclick="selectPhylo('flying')">
+                        <div class="dino-icon" style="background: linear-gradient(135deg, #4444ff, #6666ff);"></div>
+                        <div class="dino-name">Voador</div>
+                    </div>
+                    <div class="dino-card" data-phylo="swimming" onclick="selectPhylo('swimming')">
+                        <div class="dino-icon" style="background: linear-gradient(135deg, #4488ff, #66aaff);"></div>
+                        <div class="dino-name">Aquático</div>
+                    </div>
+                </div>
+            </div>
+            <div class="menu-section">
+                <h3>Escolha seu Dinossauro</h3>
+                <div class="dino-selection" id="dinoSelection">
+                </div>
+            </div>
+            <button class="start-btn" id="startBtn" onclick="startGame()" disabled>ENTRAR</button>
+        </div>
+        <div id="menu-in-game" style="display:none">
+            <h1>PAUSADO</h1>
+            <div class="menu-section">
+                <button class="menu-btn" onclick="resumeGame()">▶ Continuar</button>
+                <button class="menu-btn" onclick="showMenuSection('settings')">⚙️ Configurações</button>
+                <button class="menu-btn" onclick="showMenuSection('controls')">⌨️ Controles</button>
+                <button class="menu-btn" onclick="leaveGame()">🚪 Sair do Jogo</button>
+                <button class="menu-btn" onclick="logoutGame()">🔒 Logout</button>
+            </div>
+        </div>
+        <div id="menu-controls" style="display:none">
+            <h1>⌨️ CONTROLES</h1>
+            <div class="menu-section controls-list">
+                <div><span class="key">W A S D</span> Mover</div>
+                <div><span class="key">Shift</span> Correr</div>
+                <div><span class="key">Espaço</span> Pular</div>
+                <div><span class="key">E</span> Comer/Beber</div>
+                <div><span class="key">H</span> Descansar</div>
+                <div><span class="key">F</span> / <span class="key">1</span> Chamar</div>
+                <div><span class="key">2</span> Amigável</div>
+                <div><span class="key">3</span> Ameaçar</div>
+                <div><span class="key">4</span> Socorro</div>
+                <div><span class="key">X</span> Visão Noturna</div>
+                <div><span class="key">Esquerdo</span> Morder</div>
+                <div><span class="key">Direito</span> Cauda</div>
+                <div><span class="key">Tab</span> Placar</div>
+                <div><span class="key">Esc</span> Voltar</div>
+            </div>
+            <button class="start-btn" onclick="showMenuSection('in-game')">VOLTAR</button>
+        </div>
+        <!-- Settings -->
+        <div id="menu-settings" style="display:none">
+            <h1>⚙️ CONFIGURAÇÕES</h1>
+            <div class="menu-section">
+                <h3>Áudio</h3>
+                <div class="setting"><label>Volume Master: <span id="volValue">50%</span></label><input type="range" min="0" max="100" value="50" id="volume" oninput="document.getElementById('volValue').textContent=this.value+'%';if(GAME.dinoSound&&GAME.dinoSound.master)GAME.dinoSound.master.gain.value=this.value/100;"></div>
+                <h3>Jogo</h3>
+                <div class="setting"><label>Sensibilidade: <span id="sensValue">5</span></label><input type="range" min="1" max="20" value="5" id="sensitivity" oninput="document.getElementById('sensValue').textContent=this.value;GAME.mouseSensitivity=this.value/5;"></div>
+                <div class="setting"><label>Distância da Câmera: <span id="distValue">20</span></label><input type="range" min="5" max="60" value="20" id="cameraDistance" oninput="document.getElementById('distValue').textContent=this.value;GAME.cameraDistance=parseFloat(this.value);"></div>
+            </div>
+            <button class="start-btn" onclick="showMenuSection('in-game')">VOLTAR</button>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+        <h2>Carregando Mundo...</h2>
+        <div class="loading-bar">
+            <div class="loading-fill" id="loadingFill"></div>
+        </div>
+    </div>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Game Cursor -->
+    <div id="gameCursor"></div>
+
+    <!-- HUD -->
+    <div id="hud">
+        <!-- Health bar -->
+        <div class="health-bar">
+            <div class="health-fill" id="healthFill"></div>
+        </div>
+
+        <!-- Stamina bar -->
+        <div class="stamina-bar">
+            <div class="stamina-fill" id="staminaFill"></div>
+        </div>
+
+        <!-- Hunger bar -->
+        <div class="hunger-bar">
+            <div class="hunger-fill" id="hungerFill"></div>
+        </div>
+
+        <!-- Thirst bar -->
+        <div class="thirst-bar">
+            <div class="thirst-fill" id="thirstFill"></div>
+        </div>
+
+        <!-- Sprint indicator -->
+        <div class="sprint-indicator">
+            <div class="sprint-fill" id="sprintFill"></div>
+        </div>
+
+        <!-- Dinosaur stats -->
+        <div class="dino-stats">
+            <h2 id="dinoName">-</h2>
+            <div class="stat">
+                <span class="stat-label">HP:</span>
+                <span id="healthStat">-</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Stamina:</span>
+                <span id="staminaStat">-</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Fome:</span>
+                <span id="hungerStat">-</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Sede:</span>
+                <span id="thirstStat">-</span>
+            </div>
+        </div>
+
+        <!-- Crosshair -->
+        <div class="crosshair"></div>
+
+        <!-- Minimap -->
+        <div class="minimap" id="minimap">
+            <div class="minimap-dot minimap-player" id="minimapPlayer"></div>
+        </div>
+
+        <!-- Player count -->
+        <div class="player-count">
+            <span id="hud-weather"></span>
+            <span style="margin:0 8px">|</span>
+            Jogadores: <span id="playerCount">1</span> |
+            Dinossauros: <span id="dinoCount">0</span>
+        </div>
+
+        <!-- Day/Night -->
+        <div class="day-night-indicator" id="dayNight">☀️ Dia</div>
+
+        <!-- Weather -->
+        <div class="weather" id="weather">☀️ Claro</div>
+
+        <!-- Temperature -->
+        <div class="temperature" id="temperature">25°C</div>
+
+        <!-- Ecosystem -->
+        <div class="ecosystem" id="ecosystem">
+            <h3>🌿 Ecossistema</h3>
+            <div class="ecosystem-stat">
+                <span>Carnívoros:</span>
+                <span id="carnivoreCount">0</span>
+            </div>
+            <div class="ecosystem-stat">
+                <span>Herbívoros:</span>
+                <span id="herbivoreCount">0</span>
+            </div>
+            <div class="ecosystem-stat">
+                <span>Omnívoros:</span>
+                <span id="omnivoreCount">0</span>
+            </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="leaderboard" id="leaderboard">
+            <h3>🏆 Top Kills</h3>
+            <div id="leaderboardList">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="inventory" id="inventory">
+            <h3>🎒 Inventário</h3>
+            <div class="inventory-item">
+                <div class="icon meat"></div>
+                <span>Carne: <span id="meatCount">0</span></span>
+            </div>
+            <div class="inventory-item">
+                <div class="icon berry"></div>
+                <span>Frutas: <span id="berryCount">0</span></span>
+            </div>
+            <div class="inventory-item">
+                <div class="icon fish"></div>
+                <span>Peixes: <span id="fishCount">0</span></span>
+            </div>
+            <div class="inventory-item">
+                <div class="icon insect"></div>
+                <span>Insetos: <span id="insectCount">0</span></span>
+            </div>
+        </div>
+
+        <!-- Action prompts -->
+        <div class="action-prompt" id="actionPrompt"></div>
+
+        <!-- Attack indicator -->
+        <div class="attack-indicator" id="attackIndicator">⚔️</div>
+
+        <!-- Eat indicator -->
+        <div class="eat-indicator" id="eatIndicator">🍖</div>
+
+        <!-- Call indicator -->
+        <div class="eat-indicator" id="callIndicator">🔊</div>
+
+        <!-- Distance indicator -->
+        <div class="distance-indicator" id="distanceIndicator"></div>
+
+        <!-- Food count -->
+        <div class="food-count" id="foodCount">
+            🍖 <span id="foodCountValue">0</span> |
+            🍇 <span id="berryCountValue">0</span> |
+            🐟 <span id="fishCountValue">0</span>
+        </div>
+
+        <!-- Chat -->
+        <div class="chat" id="chat"></div>
+
+        <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="Pressione Enter para conversar">
+            <button onclick="sendChat()">Enviar</button>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <h4>⌨️ Controles</h4>
+            <div><span class="key">W A S D</span> Mover</div>
+            <div><span class="key">Shift</span> Correr</div>
+            <div><span class="key">Espaço</span> Pular</div>
+            <div><span class="key">E</span> Comer/Beber</div>
+            <div><span class="key">H</span> Descansar</div>
+            <div><span class="key">F</span> / <span class="key">1</span> Chamar</div>
+            <div><span class="key">2</span> Rugido Amigável</div>
+            <div><span class="key">3</span> Ameaçar</div>
+            <div><span class="key">4</span> Pedir Socorro</div>
+            <div><span class="key">X</span> Visão Noturna</div>
+            <div><span class="key">Esquerdo</span> Morder</div>
+            <div><span class="key">Direito</span> Cauda</div>
+            <div><span class="key">Tab</span> Placar</div>
+            <div><span class="key">Esc</span> Menu</div>
+        </div>
+    </div>
+
+    <!-- Death Screen -->
+    <div class="death-screen" id="deathScreen">
+        <h1>VOCÊ MORREU</h1>
+        <p id="deathCause">-</p>
+        <button onclick="respawn()">Renascer</button>
+    </div>
+
+    <!-- Rain effect -->
+    <div class="rain-effect" id="rainEffect"></div>
+
+    <!-- Fog effect -->
+    <div class="fog-effect" id="fogEffect"></div>
+
+    <!-- Night vision overlay -->
+    <div class="night-vision-overlay" id="nightVisionOverlay"></div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script src="js/dino-viewer.js"></script>
+    <script src="js/auth-ui.js"></script>
+    <script src="js/terrain.js"></script>
+    <script>
+        // Game state
+        const GAME = {
+            camera: null,
+            scene: null,
+            renderer: null,
+            player: null,
+            ws: null,
+            selectedDino: null,
+            selectedPhylo: 'all',
+            playerName: '',
+            isPlaying: false,
+            isDead: false,
+            isRiding: false,
+            isEating: false,
+            isSprinting: false,
+            isSwimming: false,
+            isFlying: false,
+            isAttacking: false,
+            isSecondaryAttacking: false,
+            attackCooldown: 0,
+            isEatingTimer: 0,
+            keys: {},
+            mouse: { x: 0, y: 0, isPointerLocked: false },
+            cameraAngle: { x: 0, y: 0.4 },
+            cameraDistance: 20,
+            noise: null,
+            terrainData: null,
+            mapSize: 1500,
+            food: new Map(),
+            water: new Map(),
+            npcs: new Map(),
+            otherPlayers: new Map(),
+            dayTime: 0,
+            dayLength: 600, // 10 minutes
+            weather: 'clear',
+            temperature: 25,
+            rainDrops: null,
+            fog: null,
+            audioCtx: null,
+            dinoSound: null,
+            ambientNodes: null,
+            inventory: {
+                meat: 0,
+                berry: 0,
+                fish: 0,
+                insect: 0
+            },
+            kills: 0,
+            deaths: 0,
+            killsList: [],
+            nightVision: false,
+            isResting: false,
+            GRAVITY: -20,
+            mouseSensitivity: 1,
+            soundTimer: { chirp: 0, footstep: 0, ambient: false }
+        };
+
+        // GLB model registry (maps species ID to GLB filename)
+        const MODEL_REGISTRY = {
+            tyrannosaurus: 'tyrannosaurus.glb',
+            spinosaurus: 'spinosaurus.glb',
+            triceratops: 'triceratops.glb',
+            stegosaurus: 'stegosaurus.glb',
+            velociraptor: 'velociraptor.glb',
+            apatosaurus: 'apatosaurus.glb',
+            parasaurolophus: 'parasaurolophus.glb',
+            ankylosaurus: 'ankylosaurus.glb',
+            brachiosaurus: 'brachiosaurus.glb',
+            dilophosaurus: 'dilophosaurus.glb'
+        };
+        const modelCache = new Map();
+        let gltfLoader = null;
+
+        function tryLoadGLB(dinoId, targetGroup, onComplete) {
+            const filename = MODEL_REGISTRY[dinoId];
+            if (!filename) { if (onComplete) onComplete(); return; }
+            if (modelCache.has(filename)) {
+                const cached = modelCache.get(filename).scene.clone();
+                targetGroup.add(cached);
+                if (onComplete) onComplete();
+                return;
+            }
+            if (!gltfLoader) gltfLoader = new THREE.GLTFLoader();
+            gltfLoader.load('models/' + filename, (gltf) => {
+                modelCache.set(filename, gltf);
+                const cloned = gltf.scene.clone();
+                targetGroup.add(cloned);
+                if (onComplete) onComplete();
+            }, undefined, () => { if (onComplete) onComplete(); });
+        }
+
+        // Procedural sound system
+        if (typeof DINOSAURS === 'undefined') { window.DINOSAURS = {}; }
+        class DinoSoundSystem {
+            constructor() {
+                this.ctx = null;
+                this.master = null;
+                this.reverb = null;
+                this.ready = false;
+            }
+
+            init() {
+                if (this.ready) return;
+                try {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.master = this.ctx.createGain();
+                    this.master.gain.value = 0.35;
+                    this.master.connect(this.ctx.destination);
+                    this.reverb = this.createReverb();
+                    this.ready = true;
+                } catch (e) { console.warn('Audio not available'); }
+            }
+
+            ensureResumed() {
+                if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+            }
+
+            createReverb() {
+                const sr = this.ctx.sampleRate;
+                const len = sr * 0.8;
+                const buf = this.ctx.createBuffer(2, len, sr);
+                for (let ch = 0; ch < 2; ch++) {
+                    const d = buf.getChannelData(ch);
+                    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (sr * 0.15));
+                }
+                const conv = this.ctx.createConvolver();
+                conv.buffer = buf;
+                return conv;
+            }
+
+            noise(duration) {
+                const sr = this.ctx.sampleRate;
+                const len = sr * duration;
+                const buf = this.ctx.createBuffer(1, len, sr);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+                return buf;
+            }
+
+            roar(dinoId, type) {
+                this.init();
+                this.ensureResumed();
+                if (!this.ctx) return;
+                const dino = DINOSAURS && DINOSAURS[dinoId];
+                if (!dino) return;
+                const p = this.getParams(dino, type);
+                this.buildRoar(p);
+            }
+
+            getParams(dino, type) {
+                const tier = dino.tier;
+                const isCarn = dino.type === 'carnivore';
+                const id = dino.id;
+                const isAquatic = !!dino.isAquatic;
+                const isFlying = !!dino.isFlying;
+                const sauropods = ['apatosaurus','brachiosaurus','diplodocus','brontosaurus','mamenchisaurus','omeisaurus','amargasaurus'];
+                const hadrosaurs = ['parasaurolophus','corythosaurus','lambeosaurus','edmontosaurus','hadrosaurus','tenontosaurus'];
+                const ceratops = ['triceratops','protoceratops','styracosaurus','pachyrhinosaurus','ceratops'];
+                const raptors = ['velociraptor','deinonychus','utahraptor','dromaeosaurus','microraptor'];
+                const isSauropod = sauropods.includes(id);
+                const isHadrosaur = hadrosaurs.includes(id);
+                const isCeratops = ceratops.includes(id);
+                const isRaptor = raptors.includes(id);
+                const tierMult = Math.max(0.4, 1.4 - tier * 0.15);
+                const scale = (tier + 2) / 7;
+                const isSmall = tier <= 2;
+                const isBig = tier >= 4;
+
+                let baseFreq, growlFreq, growlAmt, dur, harmonicity, filterFreq, sweepDir;
+
+                if (isRaptor) {
+                    baseFreq = 700 * (1 + (tier === 3 ? -0.3 : 0));
+                    growlFreq = 200;
+                    growlAmt = 0.2;
+                    dur = 0.5 + tier * 0.15;
+                    harmonicity = 3;
+                    filterFreq = 3000;
+                    sweepDir = -1;
+                } else if (isSauropod) {
+                    baseFreq = 30 + tier * 5;
+                    growlFreq = 15;
+                    growlAmt = 0.3;
+                    dur = 2.5 + tier * 0.3;
+                    harmonicity = 2;
+                    filterFreq = 200;
+                    sweepDir = 0;
+                } else if (isHadrosaur) {
+                    baseFreq = 100 + (id === 'parasaurolophus' ? 60 : 40);
+                    growlFreq = 80;
+                    growlAmt = 0.1;
+                    dur = 1.5 + tier * 0.2;
+                    harmonicity = 2.5;
+                    filterFreq = 800;
+                    sweepDir = 0;
+                } else if (isCeratops) {
+                    baseFreq = 60 + tier * 20;
+                    growlFreq = 40;
+                    growlAmt = 0.3;
+                    dur = 1.2 + tier * 0.2;
+                    harmonicity = 2;
+                    filterFreq = 500;
+                    sweepDir = -1;
+                } else if (isFlying) {
+                    baseFreq = 800 + (1 - tier * 0.1) * 500;
+                    growlFreq = 300;
+                    growlAmt = 0.1;
+                    dur = 0.4 + tier * 0.1;
+                    harmonicity = 4;
+                    filterFreq = 4000;
+                    sweepDir = 1;
+                } else if (isAquatic) {
+                    baseFreq = 40 + tier * 15;
+                    growlFreq = 20;
+                    growlAmt = 0.15;
+                    dur = 2 + tier * 0.4;
+                    harmonicity = 1.5;
+                    filterFreq = 300;
+                    sweepDir = 0;
+                } else if (isCarn) {
+                    baseFreq = 140 - tier * 15 + (id === 'tyrannosaurus' ? -20 : 0) + (id === 'carnotaurus' ? 30 : 0);
+                    growlFreq = 50;
+                    growlAmt = 0.35;
+                    dur = 1 + tier * 0.2;
+                    harmonicity = 2;
+                    filterFreq = 400 + tier * 100;
+                    sweepDir = -1;
+                } else {
+                    baseFreq = 100 - tier * 10;
+                    growlFreq = 60;
+                    growlAmt = 0.15;
+                    dur = 0.8 + tier * 0.2;
+                    harmonicity = 1.5;
+                    filterFreq = 600 + tier * 50;
+                    sweepDir = -1;
+                }
+
+                if (isSmall) { dur = Math.min(dur, 0.8); growlAmt *= 0.5; }
+                if (isBig) { dur = Math.min(dur, 3); }
+
+                const typeMult = {
+                    call: { dur: 1, vol: 1, sweepAmt: 1, growl: 1 },
+                    friendly: { dur: 0.6, vol: 0.6, sweepAmt: 0.5, growl: 0.3 },
+                    threaten: { dur: 1.4, vol: 1.3, sweepAmt: 1.5, growl: 1.6 },
+                    help: { dur: 1.1, vol: 1.1, sweepAmt: 2, growl: 1.1 }
+                };
+                const m = typeMult[type] || typeMult.call;
+
+                return {
+                    baseFreq: Math.max(15, baseFreq),
+                    growlFreq: Math.max(10, growlFreq),
+                    growlAmt: Math.min(1, growlAmt * m.growl),
+                    duration: dur * m.dur,
+                    volume: m.vol * (0.6 + scale * 0.4),
+                    harmonicity,
+                    filterFreq: Math.min(8000, filterFreq),
+                    sweepDir,
+                    sweepAmt: m.sweepAmt,
+                    type,
+                    dino: dino,
+                    isAquatic, isFlying
+                };
+            }
+
+            buildRoar(p) {
+                const ctx = this.ctx;
+                const now = ctx.currentTime;
+                const dur = p.duration;
+
+                // Master gain for this roar
+                const roarGain = ctx.createGain();
+                roarGain.gain.value = 0;
+                roarGain.gain.setValueAtTime(0, now);
+                roarGain.gain.linearRampToValueAtTime(p.volume * 0.8, now + 0.05);
+                if (p.type === 'threaten') {
+                    roarGain.gain.linearRampToValueAtTime(p.volume, now + 0.15);
+                    roarGain.gain.setValueAtTime(p.volume, now + dur * 0.6);
+                    roarGain.gain.linearRampToValueAtTime(0, now + dur);
+                } else if (p.type === 'help') {
+                    for (let i = 0; i < 3; i++) {
+                        const t = now + i * dur * 0.3;
+                        roarGain.gain.setValueAtTime(0, t);
+                        roarGain.gain.linearRampToValueAtTime(p.volume * 0.9, t + 0.05);
+                        roarGain.gain.linearRampToValueAtTime(0, t + dur * 0.25);
+                    }
+                    roarGain.gain.setValueAtTime(0, now + dur);
+                } else if (p.type === 'friendly') {
+                    roarGain.gain.setValueAtTime(0, now);
+                    roarGain.gain.linearRampToValueAtTime(p.volume * 0.6, now + 0.1);
+                    roarGain.gain.linearRampToValueAtTime(0, now + dur);
+                } else {
+                    roarGain.gain.linearRampToValueAtTime(p.volume * 0.7, now + dur * 0.3);
+                    roarGain.gain.linearRampToValueAtTime(0, now + dur);
+                }
+
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(p.filterFreq, now);
+                if (p.sweepDir < 0) {
+                    filter.frequency.linearRampToValueAtTime(p.filterFreq * 0.4, now + dur * 0.3);
+                } else if (p.sweepDir > 0) {
+                    filter.frequency.linearRampToValueAtTime(p.filterFreq * 1.5, now + dur * 0.3);
+                }
+
+                // Fundamental oscillator
+                const osc = ctx.createOscillator();
+                osc.frequency.setValueAtTime(p.baseFreq, now);
+                if (p.sweepDir < 0) {
+                    osc.frequency.linearRampToValueAtTime(p.baseFreq * 0.5, now + dur * 0.3);
+                    osc.frequency.linearRampToValueAtTime(p.baseFreq * 0.3, now + dur);
+                } else if (p.sweepDir > 0) {
+                    osc.frequency.linearRampToValueAtTime(p.baseFreq * 2, now + dur * 0.4);
+                    osc.frequency.linearRampToValueAtTime(p.baseFreq * 0.8, now + dur);
+                }
+                osc.type = p.dino.type === 'carnivore' ? 'sawtooth' : 'sine';
+                osc.connect(filter);
+                osc.start(now);
+                osc.stop(now + dur);
+
+                // Harmonics
+                const harmCount = 2 + Math.floor(p.harmonicity);
+                for (let i = 1; i <= harmCount; i++) {
+                    const h = ctx.createOscillator();
+                    h.frequency.setValueAtTime(p.baseFreq * (i + 1), now);
+                    h.frequency.linearRampToValueAtTime(p.baseFreq * (i + 1) * (p.sweepDir < 0 ? 0.6 : 1.2), now + dur * 0.3);
+                    h.type = i % 2 === 0 ? 'sine' : 'triangle';
+                    const hGain = ctx.createGain();
+                    hGain.gain.value = 0.15 / (i + 1);
+                    h.connect(hGain);
+                    hGain.connect(filter);
+                    h.start(now);
+                    h.stop(now + dur);
+                }
+
+                // Growl (noise)
+                if (p.growlAmt > 0.05) {
+                    const noiseSrc = ctx.createBufferSource();
+                    noiseSrc.buffer = this.noise(dur);
+                    const noiseFilter = ctx.createBiquadFilter();
+                    noiseFilter.type = 'bandpass';
+                    noiseFilter.frequency.value = p.growlFreq * 2;
+                    noiseFilter.Q.value = 2;
+                    const noiseGain = ctx.createGain();
+                    noiseGain.gain.setValueAtTime(0, now);
+                    noiseGain.gain.linearRampToValueAtTime(p.growlAmt * 0.3, now + 0.1);
+                    noiseGain.gain.setValueAtTime(p.growlAmt * 0.15, now + dur * 0.7);
+                    noiseGain.gain.linearRampToValueAtTime(0, now + dur);
+                    noiseSrc.connect(noiseFilter);
+                    noiseFilter.connect(noiseGain);
+                    noiseGain.connect(filter);
+                    noiseSrc.start(now);
+                    noiseSrc.stop(now + dur);
+                }
+
+                // Sub-bass for big dinosaurs
+                if (p.dino.tier >= 4) {
+                    const sub = ctx.createOscillator();
+                    sub.frequency.value = p.baseFreq * 0.5;
+                    sub.type = 'sine';
+                    const subGain = ctx.createGain();
+                    subGain.gain.setValueAtTime(0, now);
+                    subGain.gain.linearRampToValueAtTime(0.25, now + 0.1);
+                    subGain.gain.linearRampToValueAtTime(0, now + dur * 0.8);
+                    sub.connect(subGain);
+                    subGain.connect(filter);
+                    sub.start(now);
+                    sub.stop(now + dur);
+                }
+
+                // Reverb send
+                const dryGain = ctx.createGain();
+                dryGain.gain.value = 0.6;
+                const wetGain = ctx.createGain();
+                wetGain.gain.value = 0.4;
+
+                filter.connect(dryGain);
+                dryGain.connect(roarGain);
+                filter.connect(wetGain);
+                wetGain.connect(this.reverb);
+                this.reverb.connect(roarGain);
+
+                roarGain.connect(this.master);
+
+                // Cleanup
+                setTimeout(() => {
+                    try { osc.disconnect(); } catch (e) {}
+                    try { roarGain.disconnect(); } catch (e) {}
+                }, (dur + 1) * 1000);
+            }
+
+            // Ambient wind
+            startAmbient() {
+                if (!this.ctx || GAME.ambientNodes) return;
+                const ctx = this.ctx;
+                const noiseSrc = ctx.createBufferSource();
+                noiseSrc.buffer = this.noise(4);
+                noiseSrc.loop = true;
+                const lp = ctx.createBiquadFilter();
+                lp.type = 'lowpass';
+                lp.frequency.value = 300;
+                const hp = ctx.createBiquadFilter();
+                hp.type = 'highpass';
+                hp.frequency.value = 60;
+                const gain = ctx.createGain();
+                gain.gain.value = 0.04;
+                noiseSrc.connect(lp);
+                lp.connect(hp);
+                hp.connect(gain);
+                gain.connect(this.master);
+                noiseSrc.start();
+                GAME.ambientNodes = { noiseSrc, lp, hp, gain };
+            }
+
+            stopAmbient() {
+                if (GAME.ambientNodes) {
+                    try { GAME.ambientNodes.noiseSrc.stop(); } catch (e) {}
+                    GAME.ambientNodes = null;
+                }
+            }
+
+            // Birds/insects chirps
+            playChirp() {
+                if (!this.ctx) return;
+                const ctx = this.ctx;
+                const now = ctx.currentTime;
+                const dur = 0.08 + Math.random() * 0.12;
+                const freq = 2000 + Math.random() * 3000;
+                const osc = ctx.createOscillator();
+                osc.frequency.setValueAtTime(freq, now);
+                osc.frequency.linearRampToValueAtTime(freq * (1.2 + Math.random() * 0.5), now + dur);
+                osc.type = 'sine';
+                const g = ctx.createGain();
+                g.gain.setValueAtTime(0, now);
+                g.gain.linearRampToValueAtTime(0.03, now + 0.01);
+                g.gain.linearRampToValueAtTime(0, now + dur);
+                osc.connect(g);
+                g.connect(this.master);
+                osc.start(now);
+                osc.stop(now + dur);
+            }
+
+            // Footstep
+            playFootstep(isSprinting) {
+                if (!this.ctx) return;
+                const ctx = this.ctx;
+                const now = ctx.currentTime;
+                const noiseSrc = ctx.createBufferSource();
+                noiseSrc.buffer = this.noise(0.05);
+                const bp = ctx.createBiquadFilter();
+                bp.type = 'bandpass';
+                bp.frequency.value = isSprinting ? 300 : 150;
+                bp.Q.value = 1.5;
+                const g = ctx.createGain();
+                g.gain.setValueAtTime(isSprinting ? 0.08 : 0.04, now);
+                g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                noiseSrc.connect(bp);
+                bp.connect(g);
+                g.connect(this.master);
+                noiseSrc.start(now);
+                noiseSrc.stop(now + 0.1);
+            }
+
+            // Eating
+            playEat() {
+                if (!this.ctx) return;
+                const ctx = this.ctx;
+                const now = ctx.currentTime;
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const t = ctx.currentTime;
+                        const n = ctx.createBufferSource();
+                        n.buffer = this.noise(0.04);
+                        const bp = ctx.createBiquadFilter();
+                        bp.type = 'bandpass';
+                        bp.frequency.value = 800 + Math.random() * 400;
+                        bp.Q.value = 4;
+                        const g = ctx.createGain();
+                        g.gain.setValueAtTime(0.02, t);
+                        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                        n.connect(bp);
+                        bp.connect(g);
+                        g.connect(this.master);
+                        n.start(t);
+                        n.stop(t + 0.06);
+                    }, i * 200);
+                }
+            }
+
+            // Water lap
+            playWater() {
+                if (!this.ctx) return;
+                const ctx = this.ctx;
+                const now = ctx.currentTime;
+                const n = ctx.createBufferSource();
+                n.buffer = this.noise(0.15);
+                const bp = ctx.createBiquadFilter();
+                bp.type = 'bandpass';
+                bp.frequency.value = 500 + Math.random() * 300;
+                bp.Q.value = 3;
+                const g = ctx.createGain();
+                g.gain.setValueAtTime(0.02, now);
+                g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                n.connect(bp);
+                bp.connect(g);
+                g.connect(this.master);
+                n.start(now);
+                n.stop(now + 0.2);
+            }
+
+            dispose() {
+                this.stopAmbient();
+                if (this.ctx) { this.ctx.close(); this.ctx = null; }
+                this.ready = false;
+            }
+        }
+
+        // Initialize Three.js
+        function initGameFromAuth() {
+            const jd = window.__dinoJoinData || {};
+            GAME.playerName = jd.dinoName || "Player";
+            GAME.selectedDino = jd.dinosaurId || "compsognathus";
+            GAME.isPlaying = true;
+            GAME.dinoSound = new DinoSoundSystem();
+            GAME.dinoSound.init();
+            document.getElementById("auth-overlay").classList.add("hidden");
+            document.getElementById("menu")?.classList.add("hidden");
+            initThreeJS();
+            connectWS();
+            startGameLoop();
+        }
+
+function initThreeJS() {
+            const canvas = document.getElementById('gameCanvas');
+            GAME.scene = new THREE.Scene();
+            GAME.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 6000);
+            GAME.camera.position.set(0, 100, 150);
+            GAME.camera.lookAt(0, 0, 0);
+            GAME.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            GAME.renderer.setSize(window.innerWidth, window.innerHeight);
+            GAME.renderer.shadowMap.enabled = true;
+            GAME.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            GAME.renderer.setClearColor(0x87CEEB);
+            canvas.style.display = 'block';
+
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0x808080, 0.6);
+            GAME.scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+            sunLight.position.set(100, 80, 100);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 500;
+            sunLight.shadow.camera.left = -100;
+            sunLight.shadow.camera.right = 100;
+            sunLight.shadow.camera.top = 100;
+            sunLight.shadow.camera.bottom = -100;
+            GAME.scene.add(sunLight);
+
+            // Hemisphere light for better lighting
+            const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x362312, 0.6);
+            GAME.scene.add(hemiLight);
+            GAME.renderer.toneMappingExposure = 1.2;
+            GAME.noise = new Noise(42);
+            const terrainData = createProceduralTerrain(GAME.scene, GAME.mapSize, GAME.noise);
+            GAME.terrainData = terrainData;
+
+            createTerrainDecorations(GAME.scene, GAME.mapSize, GAME.noise, terrainData.heightMap, terrainData.grid);
+            createWaterPlane(GAME.scene, GAME.mapSize);
+
+        const BASE_MODEL_LENGTH = 15;
+
+        function createDinoModel(dinoData) {
+            const group = new THREE.Group();
+            const color = dinoData?.color || '#8B4513';
+            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.1 });
+            const scale = (dinoData?.realLength || 8) / BASE_MODEL_LENGTH;
+
+            const body = new THREE.Mesh(new THREE.BoxGeometry(4 * scale, 2 * scale, 6 * scale), mat);
+            body.castShadow = true;
+            group.add(body);
+
+            const headPivot = new THREE.Group();
+            headPivot.position.set(0, 1.5 * scale, 3 * scale);
+            group.add(headPivot);
+
+            const head = new THREE.Mesh(new THREE.BoxGeometry(2 * scale, 1.5 * scale, 2 * scale), mat);
+            head.position.set(0, 0, 1 * scale);
+            head.castShadow = true;
+            headPivot.add(head);
+
+            const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 });
+            const eyeGeo = new THREE.SphereGeometry(0.2 * scale, 8, 8);
+            const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeL.position.set(-0.5 * scale, 0.3 * scale, 1.5 * scale);
+            headPivot.add(eyeL);
+            const eyeR = eyeL.clone();
+            eyeR.position.set(0.5 * scale, 0.3 * scale, 1.5 * scale);
+            headPivot.add(eyeR);
+
+            const teethMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.3 });
+            const teethGeo = new THREE.ConeGeometry(0.1 * scale, 0.3 * scale, 4);
+            for (let i = -2; i <= 2; i++) {
+                const t = new THREE.Mesh(teethGeo, teethMat);
+                t.position.set(i * 0.3 * scale, -0.3 * scale, 2 * scale);
+                headPivot.add(t);
+            }
+
+            const legGeo = new THREE.CylinderGeometry(0.3 * scale, 0.4 * scale, 2 * scale, 8);
+            const legs = [];
+            const legOffsets = [[1.2 * scale, -1 * scale, 1.5 * scale], [-1.2 * scale, -1 * scale, 1.5 * scale], [1.2 * scale, -1 * scale, -1.5 * scale], [-1.2 * scale, -1 * scale, -1.5 * scale]];
+            legOffsets.forEach(pos => {
+                const leg = new THREE.Mesh(legGeo, mat);
+                leg.position.set(...pos);
+                leg.castShadow = true;
+                group.add(leg);
+                legs.push(leg);
+            });
+
+            const tailPivot = new THREE.Group();
+            tailPivot.position.set(0, 0.5 * scale, -3 * scale);
+            group.add(tailPivot);
+
+            const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * scale, 0.2 * scale, 8 * scale, 8), mat);
+            tail.position.set(0, 0, -3 * scale);
+            tail.rotation.x = Math.PI / 4;
+            tail.castShadow = true;
+            tailPivot.add(tail);
+
+            group.userData = { body, headPivot, tailPivot, legs, head };
+
+            // Attempt GLB model replacement (async, falls back to procedural)
+            const dinoId = dinoData?.id || dinoData?.dinosaurId;
+            if (dinoId && MODEL_REGISTRY[dinoId]) {
+                tryLoadGLB(dinoId, group, () => {
+                    // Hide procedural parts once GLB loads
+                    body.visible = false;
+                    headPivot.visible = false;
+                    tailPivot.visible = false;
+                    legs.forEach(l => l.visible = false);
+                });
+            }
+
+            return group;
+        }
+
+        function updateDinoAnimation(model, state, elapsed, delta) {
+            const ud = model.userData;
+            const { isMoving, isSprinting, isJumping, isResting, isAttacking, isEating, attackType } = state;
+
+            const walkSpeed = isSprinting ? 18 : 10;
+            const legSwing = isSprinting ? 0.35 : 0.2;
+
+            // Walking / sprinting leg cycle
+            ud.legs.forEach((leg, i) => {
+                const phase = i < 2 ? 0 : Math.PI;
+                if (isMoving && !isResting) {
+                    leg.position.y = -1 + Math.sin(elapsed * walkSpeed + phase + i * 0.3) * legSwing;
+                } else {
+                    leg.position.y += (-1 - leg.position.y) * 0.1;
+                }
+            });
+
+            // Body bob
+            ud.body.position.y = isMoving && !isResting ? Math.sin(elapsed * walkSpeed) * 0.05 : 0;
+
+            // Tail sway
+            ud.tailPivot.rotation.y = isMoving ? Math.sin(elapsed * walkSpeed * 0.5) * 0.2 : 0;
+
+            // Rest pose
+            if (isResting) {
+                const targetTilt = -0.6;
+                ud.body.rotation.x += (targetTilt - ud.body.rotation.x) * 0.05;
+                ud.headPivot.rotation.x += (0.4 - ud.headPivot.rotation.x) * 0.05;
+                ud.tailPivot.rotation.x += (-0.3 - ud.tailPivot.rotation.x) * 0.05;
+            } else {
+                ud.body.rotation.x *= 0.95;
+                ud.headPivot.rotation.x *= 0.95;
+                ud.tailPivot.rotation.x *= 0.95;
+            }
+
+            // Jump - tuck legs
+            if (isJumping) {
+                ud.legs.forEach(leg => leg.position.y = -1.5);
+            }
+
+            // Bite attack
+            if (isAttacking && attackType === 'bite') {
+                const bitePhase = Math.sin(elapsed * 30) * 0.6;
+                ud.headPivot.rotation.x = Math.max(0, bitePhase);
+            }
+
+            // Tail attack
+            if (isAttacking && attackType === 'tail') {
+                ud.tailPivot.rotation.y = Math.sin(elapsed * 15) * 0.8;
+            }
+
+            // Eating - slight head bob
+            if (isEating) {
+                ud.headPivot.rotation.x = Math.sin(elapsed * 6) * 0.15;
+            }
+        }
+
+        // Connect to WebSocket
+        function connectWS() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const jd = window.__dinoJoinData || {};
+    const token = jd.token || localStorage.getItem('dino_token') || '';
+    GAME.ws = new WebSocket(`${protocol}//${window.location.hostname}:2122?token=${encodeURIComponent(token)}`);
+
+            GAME.ws.onopen = () => {
+                console.log('Connected to server');
+                // Send join message
+                GAME.ws.send(JSON.stringify({
+                    type: 'join',
+                    dinosaurId: GAME.selectedDino,
+                    name: GAME.playerName
+                }));
+            };
+
+            GAME.ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleServerMessage(data);
+            };
+
+            GAME.ws.onclose = () => {
+                console.log('Disconnected from server');
+            };
+        }
+
+        // Handle server messages
+        function handleServerMessage(data) {
+            if (data.type === 'joined') {
+                GAME.player = {
+                    id: data.playerId,
+                    name: GAME.playerName,
+                    dinosaurId: data.dinosaur,
+                    position: data.position,
+                    rotation: data.rotation,
+                    health: 100,
+                    stamina: 100,
+                    hunger: 100,
+                    thirst: 100,
+                    isSprinting: false,
+                    isDead: false,
+                    isAttacking: false,
+                    isRiding: false,
+                    isEating: false,
+                    kills: 0,
+                    verticalVelocity: 0,
+                    groundY: data.position.y
+                };
+                updateHUD();
+
+                // Store dinosaur definitions from server
+                if (data.dinosaurs) { window.DINOSAURS = data.dinosaurs; }
+
+                // Create player dinosaur model
+                const dinoModel = createDinoModel(data.dinosaur);
+                GAME.scene.add(dinoModel);
+                GAME.player.dinoModel = dinoModel;
+            }
+
+            if (data.type === 'weather_update') {
+                GAME.weather = data.weather;
+                GAME.temperature = data.temperature;
+                GAME.wind = data.wind;
+                if (document.getElementById('hud-weather')) {
+                    const icons = { clear:'☀️', cloudy:'☁️', rain:'🌧️', storm:'⛈️', fog:'🌫️', snow:'🌨️', heatwave:'🔥' };
+                    document.getElementById('hud-weather').textContent =
+                        (icons[data.weather] || '☀️') + ' ' +
+                        (data.temperature || 25) + '°C';
+                }
+                return;
+            }
+            if (data.type === 'world_state') {
+                // Update all dinosaurs
+                data.dinosaurs.forEach(d => {
+                    if (GAME.npcs.has(d.id)) {
+                        const existing = GAME.npcs.get(d.id);
+                        existing.position.x = d.position.x;
+                        existing.position.z = d.position.z;
+                        existing.rotation = d.rotation;
+                        existing.health = d.health;
+                        existing.stamina = d.stamina;
+                        existing.hunger = d.hunger;
+                        existing.thirst = d.thirst;
+                    } else {
+                        const dinoModel = createDinoModel(DINOSAURS[d.dinosaurId]);
+                        dinoModel.position.set(d.position.x, d.position.y, d.position.z);
+                        dinoModel.rotation.y = d.rotation;
+                        GAME.scene.add(dinoModel);
+                        GAME.npcs.set(d.id, dinoModel);
+                    }
+                });
+
+                // Update other players
+                data.players.forEach(p => {
+                    if (GAME.otherPlayers.has(p.id)) {
+                        const existing = GAME.otherPlayers.get(p.id);
+                        existing.position.x = p.position.x;
+                        existing.position.z = p.position.z;
+                        existing.rotation = p.rotation;
+                        existing.health = p.health;
+                    } else {
+                        const dinoModel = createDinoModel(DINOSAURS[p.dinosaurId]);
+                        dinoModel.position.set(p.position.x, p.position.y, p.position.z);
+                        dinoModel.rotation.y = p.rotation;
+                        GAME.scene.add(dinoModel);
+                        GAME.otherPlayers.set(p.id, dinoModel);
+                    }
+                });
+
+                // Update food
+                data.food.forEach(f => {
+                    if (GAME.food.has(f.id)) {
+                        const existing = GAME.food.get(f.id);
+                        existing.position.x = f.position.x;
+                        existing.position.z = f.position.z;
+                    } else {
+                        const foodModel = createFoodModel(f.type);
+                        foodModel.position.set(f.position.x, f.position.y, f.position.z);
+                        GAME.scene.add(foodModel);
+                        GAME.food.set(f.id, foodModel);
+                    }
+                });
+
+                // Update water
+                data.water.forEach(w => {
+                    if (!GAME.water.has(w.id)) {
+                        const waterModel = createWaterModel(w.id, w.position);
+                        GAME.water.set(w.id, waterModel);
+                    }
+                });
+
+                // Update counts
+                document.getElementById('playerCount').textContent = data.players.length;
+                document.getElementById('dinoCount').textContent = data.dinosaurs.length;
+            }
+
+            if (data.type === 'update') {
+                // Update all players
+                data.players.forEach(p => {
+                    if (p.id === GAME.player.id) {
+                        GAME.player.position = p.position;
+                        GAME.player.rotation = p.rotation;
+                        GAME.player.health = p.health;
+                        GAME.player.stamina = p.stamina;
+                        GAME.player.hunger = p.hunger;
+                        GAME.player.thirst = p.thirst;
+                        GAME.player.isSprinting = p.isSprinting;
+                        GAME.player.isDead = p.isDead;
+                        GAME.player.isAttacking = p.isAttacking;
+                        GAME.player.isRiding = p.isRiding;
+                        GAME.player.isEating = p.isEating;
+                    }
+                });
+
+                // Update all dinosaurs
+                data.dinosaurs.forEach(d => {
+                    if (GAME.npcs.has(d.id)) {
+                        const existing = GAME.npcs.get(d.id);
+                        existing.position.x = d.position.x;
+                        existing.position.z = d.position.z;
+                        existing.rotation = d.rotation;
+                        existing.health = d.health;
+                        existing.stamina = d.stamina;
+                        existing.hunger = d.hunger;
+                        existing.thirst = d.thirst;
+                    }
+                });
+
+                // Update food
+                data.food.forEach(f => {
+                    if (GAME.food.has(f.id)) {
+                        const existing = GAME.food.get(f.id);
+                        existing.position.x = f.position.x;
+                        existing.position.z = f.position.z;
+                    }
+                });
+
+                // Update water
+                data.water.forEach(w => {
+                    if (GAME.water.has(w.id)) {
+                        const existing = GAME.water.get(w.id);
+                        existing.position.x = w.position.x;
+                        existing.position.z = w.position.z;
+                    }
+                });
+
+                updateHUD();
+            }
+        }
+
+        // Create food model
+        function createFoodModel(type) {
+            const color = type === 'berry' ? 0x44ff44 : 0xff4444;
+            const geometry = new THREE.SphereGeometry(0.5, 8, 8);
+            const material = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            const food = new THREE.Mesh(geometry, material);
+            food.castShadow = true;
+            return food;
+        }
+
+        // Create water model
+        function createWaterModel(id, position) {
+            const geometry = new THREE.PlaneGeometry(10, 10);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x1E90FF,
+                transparent: true,
+                opacity: 0.7,
+                roughness: 0.1,
+                metalness: 0.5
+            });
+            const water = new THREE.Mesh(geometry, material);
+            water.rotation.x = -Math.PI / 2;
+            water.position.set(position.x, -0.1, position.z);
+            return water;
+        }
+
+        // Update HUD
+        function updateHUD() {
+            if (!GAME.player) return;
+
+            const dino = GAME.player.dinosaurId;
+            document.getElementById('dinoName').textContent = dino.name || dino.id;
+            document.getElementById('healthStat').textContent = Math.round(GAME.player.health);
+            document.getElementById('staminaStat').textContent = Math.round(GAME.player.stamina);
+            document.getElementById('hungerStat').textContent = Math.round(GAME.player.hunger);
+            document.getElementById('thirstStat').textContent = Math.round(GAME.player.thirst);
+
+            document.getElementById('healthFill').style.width = `${(GAME.player.health / dino.maxHealth) * 100}%`;
+            document.getElementById('staminaFill').style.width = `${(GAME.player.stamina / dino.maxStamina) * 100}%`;
+            document.getElementById('hungerFill').style.width = `${(GAME.player.hunger / dino.maxHunger) * 100}%`;
+            document.getElementById('thirstFill').style.width = `${(GAME.player.thirst / dino.maxThirst) * 100}%`;
+            document.getElementById('sprintFill').style.width = `${(GAME.player.stamina / dino.maxStamina) * 100}%`;
+
+            // Update inventory
+            document.getElementById('meatCount').textContent = GAME.inventory.meat;
+            document.getElementById('berryCount').textContent = GAME.inventory.berry;
+            document.getElementById('fishCount').textContent = GAME.inventory.fish;
+            document.getElementById('insectCount').textContent = GAME.inventory.insect;
+        }
+
+        // Start game
+        function startGame() { try { initGameFromAuth(); } catch(e) { console.error(e); } }
+
+        // Start game loop
+        function startGameLoop() {
+            const clock = new THREE.Clock();
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                const delta = clock.getDelta();
+                const elapsed = clock.getElapsedTime();
+
+                // Update game logic
+                update(delta, elapsed);
+
+                // Update camera
+                updateCamera();
+
+                // Update weather effects
+                updateWeatherEffects();
+
+                // Update day/night cycle
+                updateDayNight(delta);
+
+                // Render
+                GAME.renderer.render(GAME.scene, GAME.camera);
+            }
+
+            animate();
+        }
+
+        // Update game logic
+        function update(delta, elapsed) {
+            if (!GAME.player) return;
+
+            // Update position based on movement
+            if (GAME.keys['KeyW']) {
+                GAME.player.position.x += Math.sin(GAME.player.rotation * Math.PI / 180) * 0.1;
+                GAME.player.position.z += Math.cos(GAME.player.rotation * Math.PI / 180) * 0.1;
+            }
+            if (GAME.keys['KeyS']) {
+                GAME.player.position.x -= Math.sin(GAME.player.rotation * Math.PI / 180) * 0.1;
+                GAME.player.position.z -= Math.cos(GAME.player.rotation * Math.PI / 180) * 0.1;
+            }
+            if (GAME.keys['KeyA']) {
+                GAME.player.position.x += Math.cos(GAME.player.rotation * Math.PI / 180) * 0.1;
+                GAME.player.position.z -= Math.sin(GAME.player.rotation * Math.PI / 180) * 0.1;
+            }
+            if (GAME.keys['KeyD']) {
+                GAME.player.position.x -= Math.cos(GAME.player.rotation * Math.PI / 180) * 0.1;
+                GAME.player.position.z += Math.sin(GAME.player.rotation * Math.PI / 180) * 0.1;
+            }
+
+            // Update stamina while sprinting
+            if (GAME.isSprinting) {
+                GAME.player.stamina -= 0.5 * delta;
+                if (GAME.player.stamina <= 0) {
+                    GAME.player.stamina = 0;
+                    GAME.isSprinting = false;
+                }
+            } else {
+                GAME.player.stamina = Math.min(GAME.player.stamina + 0.3 * delta, GAME.player.dinosaurId.maxStamina);
+            }
+
+            // Update hunger
+            GAME.player.hunger -= 0.1 * delta;
+            if (GAME.player.hunger <= 0) {
+                GAME.player.hunger = 0;
+                GAME.player.health -= 0.1 * delta;
+            }
+
+            // Update thirst
+            GAME.player.thirst -= 0.15 * delta;
+            if (GAME.player.thirst <= 0) {
+                GAME.player.thirst = 0;
+                GAME.player.health -= 0.1 * delta;
+            }
+
+            // Health regen
+            if (GAME.player.hunger > 50 && GAME.player.thirst > 50) {
+                GAME.player.health = Math.min(GAME.player.health + 0.1 * delta, GAME.player.dinosaurId.maxHealth);
+            }
+
+            // Resting regen
+            if (GAME.isResting) {
+                GAME.player.health = Math.min(GAME.player.health + 0.5 * delta, GAME.player.dinosaurId.maxHealth);
+                GAME.player.stamina = Math.min(GAME.player.stamina + 0.8 * delta, GAME.player.dinosaurId.maxStamina);
+            }
+
+            // Attack cooldown
+            if (GAME.attackCooldown > 0) {
+                GAME.attackCooldown -= delta;
+            }
+
+            // Eating timer
+            if (GAME.isEating) {
+                GAME.isEatingTimer -= delta;
+                if (GAME.isEatingTimer <= 0) {
+                    GAME.isEating = false;
+                }
+            }
+
+            // Jump physics
+            GAME.player.verticalVelocity += GAME.GRAVITY * delta;
+            GAME.player.position.y += GAME.player.verticalVelocity * delta;
+            if (GAME.player.position.y <= GAME.player.groundY) {
+                GAME.player.position.y = GAME.player.groundY;
+                GAME.player.verticalVelocity = 0;
+            }
+
+            // Update dinosaur model position and animations
+            if (GAME.player.dinoModel) {
+                GAME.player.dinoModel.position.x = GAME.player.position.x;
+                GAME.player.dinoModel.position.y = GAME.player.position.y;
+                GAME.player.dinoModel.position.z = GAME.player.position.z;
+                GAME.player.dinoModel.rotation.y = GAME.player.rotation;
+
+                const isMoving = GAME.keys['KeyW'] || GAME.keys['KeyS'] || GAME.keys['KeyA'] || GAME.keys['KeyD'];
+                updateDinoAnimation(GAME.player.dinoModel, {
+                    isMoving,
+                    isSprinting: GAME.isSprinting,
+                    isJumping: GAME.player.verticalVelocity !== 0,
+                    isResting: GAME.isResting,
+                    isAttacking: GAME.isAttacking || GAME.isSecondaryAttacking,
+                    isEating: GAME.isEating,
+                    attackType: GAME.isSecondaryAttacking ? 'tail' : 'bite'
+                }, elapsed, delta);
+            }
+
+            // Sound effects
+            if (GAME.dinoSound && GAME.dinoSound.ready) {
+                if (!GAME.soundTimer.ambient) {
+                    GAME.dinoSound.startAmbient();
+                    GAME.soundTimer.ambient = true;
+                }
+                GAME.soundTimer.chirp -= delta;
+                if (GAME.soundTimer.chirp <= 0) {
+                    if (Math.random() < 0.3) GAME.dinoSound.playChirp();
+                    GAME.soundTimer.chirp = 3 + Math.random() * 5;
+                }
+                const isMoving = GAME.keys['KeyW'] || GAME.keys['KeyS'] || GAME.keys['KeyA'] || GAME.keys['KeyD'];
+                if (isMoving && !GAME.isResting) {
+                    GAME.soundTimer.footstep -= delta;
+                    const stepInterval = GAME.isSprinting ? 0.25 : 0.5;
+                    if (GAME.soundTimer.footstep <= 0) {
+                        GAME.dinoSound.playFootstep(GAME.isSprinting);
+                        GAME.soundTimer.footstep = stepInterval;
+                    }
+                }
+            }
+
+            // Update other dinosaurs
+            GAME.npcs.forEach((dino, id) => {
+                dino.position.x += Math.sin(elapsed * 0.5 + id.charCodeAt(0)) * 0.01;
+                dino.position.z += Math.cos(elapsed * 0.5 + id.charCodeAt(0)) * 0.01;
+                dino.rotation.y = elapsed * 0.1 + id.charCodeAt(0);
+            });
+
+            // Update food bobbing
+            GAME.food.forEach((food, id) => {
+                food.position.y = 0.5 + Math.sin(elapsed * 2 + id.charCodeAt(0)) * 0.2;
+            });
+
+            // Check death
+            if (GAME.player.health <= 0) {
+                GAME.isDead = true;
+                document.getElementById('deathScreen').classList.add('active');
+            }
+        }
+
+        // Update camera
+        function updateCamera() {
+            if (!GAME.player) return;
+
+            const dist = GAME.cameraDistance || 20;
+            const height = 8 + GAME.cameraAngle.y * 15;
+
+            const targetX = GAME.player.position.x + Math.sin(GAME.player.rotation * Math.PI / 180) * dist;
+            const targetZ = GAME.player.position.z + Math.cos(GAME.player.rotation * Math.PI / 180) * dist;
+            const targetY = GAME.player.position.y + height;
+
+            GAME.camera.position.x += (targetX - GAME.camera.position.x) * 0.1;
+            GAME.camera.position.y += (targetY - GAME.camera.position.y) * 0.1;
+            GAME.camera.position.z += (targetZ - GAME.camera.position.z) * 0.1;
+            GAME.camera.lookAt(GAME.player.position.x, GAME.player.position.y + 1, GAME.player.position.z);
+        }
+
+        // Update weather effects
+        function updateWeatherEffects() {
+            if (GAME.weather === 'rain') {
+                document.getElementById('rainEffect').classList.add('active');
+                document.getElementById('fogEffect').classList.add('active');
+            } else {
+                document.getElementById('rainEffect').classList.remove('active');
+                document.getElementById('fogEffect').classList.remove('active');
+            }
+        }
+
+        // Update day/night cycle
+        function updateDayNight(delta) {
+            GAME.dayTime += delta || 0.016;
+            const dayProgress = (GAME.dayTime % GAME.dayLength) / GAME.dayLength;
+            const sunAngle = dayProgress * Math.PI * 2;
+            const isDay = sunAngle < Math.PI;
+            const dayIntensity = Math.max(0, Math.sin(sunAngle));
+
+            GAME.scene.children.forEach(child => {
+                if (child instanceof THREE.DirectionalLight) {
+                    child.intensity = 0.3 + dayIntensity * 1.2;
+                    child.position.set(100 * Math.cos(sunAngle - Math.PI / 2), 80 * dayIntensity + 10, 100 * Math.sin(sunAngle - Math.PI / 2));
+                }
+            });
+
+            const skyColor = new THREE.Color();
+            if (isDay) {
+                skyColor.setHSL(0.6, 0.5, 0.4 + dayIntensity * 0.4);
+            } else {
+                skyColor.setHSL(0.65, 0.4, 0.08 + dayIntensity * 0.08);
+            }
+            GAME.renderer.setClearColor(skyColor);
+
+            const dayNightEl = document.getElementById('dayNight');
+            if (isDay) {
+                dayNightEl.innerHTML = '☀️ Dia';
+            } else {
+                dayNightEl.innerHTML = '🌙 Noite';
+            }
+
+            const temp = 15 + dayIntensity * 20;
+            document.getElementById('temperature').textContent = `${Math.round(temp)}°C`;
+        }
+
+        // Handle keyboard events
+        document.addEventListener('keydown', (e) => {
+            GAME.keys[e.code] = true;
+
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                GAME.isSprinting = true;
+            }
+
+            if (e.code === 'KeyE') {
+                eatOrDrink();
+            }
+
+            if (e.code === 'KeyH') {
+                GAME.isResting = !GAME.isResting;
+            }
+
+            if (e.code === 'KeyF' || e.code === 'Digit1') {
+                if (GAME.player && GAME.player.dinoModel && GAME.dinoSound) {
+                    GAME.dinoSound.roar(GAME.player.dinosaurId.id || GAME.selectedDino, 'call');
+                    document.getElementById('callIndicator').classList.add('active');
+                    setTimeout(() => document.getElementById('callIndicator').classList.remove('active'), 1500);
+                }
+            }
+
+            if (e.code === 'Digit2') {
+                if (GAME.player && GAME.player.dinoModel && GAME.dinoSound) {
+                    GAME.dinoSound.roar(GAME.player.dinosaurId.id || GAME.selectedDino, 'friendly');
+                    document.getElementById('callIndicator').classList.add('active');
+                    setTimeout(() => document.getElementById('callIndicator').classList.remove('active'), 1500);
+                }
+            }
+
+            if (e.code === 'Digit3') {
+                if (GAME.player && GAME.player.dinoModel && GAME.dinoSound) {
+                    GAME.dinoSound.roar(GAME.player.dinosaurId.id || GAME.selectedDino, 'threaten');
+                    document.getElementById('callIndicator').classList.add('active');
+                    setTimeout(() => document.getElementById('callIndicator').classList.remove('active'), 2000);
+                }
+            }
+
+            if (e.code === 'Digit4') {
+                if (GAME.player && GAME.player.dinoModel && GAME.dinoSound) {
+                    GAME.dinoSound.roar(GAME.player.dinosaurId.id || GAME.selectedDino, 'help');
+                    document.getElementById('callIndicator').classList.add('active');
+                    setTimeout(() => document.getElementById('callIndicator').classList.remove('active'), 2000);
+                }
+            }
+
+            if (e.code === 'KeyX') {
+                GAME.nightVision = !GAME.nightVision;
+                if (GAME.nightVision) {
+                    document.getElementById('nightVisionOverlay').classList.add('active');
+                } else {
+                    document.getElementById('nightVisionOverlay').classList.remove('active');
+                }
+            }
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (GAME.player && !GAME.isResting && GAME.player.verticalVelocity === 0) {
+                    const jumpPower = (GAME.player.dinosaurId.canJump !== false) ? 8 : 0;
+                    if (jumpPower > 0) GAME.player.verticalVelocity = jumpPower;
+                }
+            }
+
+            if (e.code === 'Escape') {
+                toggleMenu();
+            }
+
+            if (e.code === 'Tab') {
+                toggleLeaderboard();
+            }
+
+            if (e.code === 'Enter') {
+                const chatInput = document.getElementById('chatInput');
+                if (chatInput === document.activeElement) {
+                    if (chatInput.value.trim()) {
+                        sendChat();
+                    } else {
+                        chatInput.blur();
+                    }
+                } else {
+                    chatInput.focus();
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            GAME.keys[e.code] = false;
+
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                GAME.isSprinting = false;
+            }
+        });
+
+        // Handle mouse events (initThreeJS)
+        function attack() {
+            if (!GAME.player || GAME.isDead || GAME.attackCooldown > 0) return;
+
+            GAME.isAttacking = true;
+            GAME.attackCooldown = GAME.player.dinosaurId.attackCooldown;
+
+            if (GAME.dinoSound) GAME.dinoSound.roar(GAME.player.dinosaurId.id || GAME.selectedDino, 'threaten');
+
+            document.getElementById('attackIndicator').classList.add('active');
+
+            // Find nearest target
+            let nearestTarget = null;
+            let minDist = 5;
+
+            GAME.npcs.forEach((dino, id) => {
+                if (id === GAME.player.id) return;
+                if (dino.health <= 0) return;
+                const dist = Math.sqrt(
+                    Math.pow(dino.position.x - GAME.player.position.x, 2) +
+                    Math.pow(dino.position.z - GAME.player.position.z, 2)
+                );
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestTarget = { id, dino };
+                }
+            });
+
+            if (nearestTarget) {
+                nearestTarget.dino.health -= GAME.player.dinosaurId.attackDamage;
+                if (nearestTarget.dino.health <= 0) {
+                    GAME.player.kills++;
+                    // Drop food
+                    const meatId = `meat_${Date.now()}`;
+                    const food = createFoodModel('meat');
+                    food.position.set(nearestTarget.dino.position.x, 0.5, nearestTarget.dino.position.z);
+                    GAME.scene.add(food);
+                    GAME.food.set(meatId, food);
+                    GAME.inventory.meat += 50;
+                }
+            }
+
+            setTimeout(() => {
+                GAME.isAttacking = false;
+                document.getElementById('attackIndicator').classList.remove('active');
+            }, GAME.player.dinosaurId.attackCooldown * 1000);
+        }
+
+        // Secondary attack (alt bite/kick)
+        function secondaryAttack() {
+            if (!GAME.player || GAME.isDead || GAME.attackCooldown > 0) return;
+            GAME.isSecondaryAttacking = true;
+            GAME.attackCooldown = (GAME.player.dinosaurId.attackCooldown || 1) * 1.5;
+            document.getElementById('attackIndicator').classList.add('active');
+            setTimeout(() => {
+                GAME.isSecondaryAttacking = false;
+                document.getElementById('attackIndicator').classList.remove('active');
+            }, GAME.attackCooldown * 1000);
+        }
+
+        // Eat or drink
+        function eatOrDrink() {
+            if (!GAME.player) return;
+
+            // Find nearby food
+            let nearestFood = null;
+            let minDist = 3;
+
+            GAME.food.forEach((food, id) => {
+                const dist = Math.sqrt(
+                    Math.pow(food.position.x - GAME.player.position.x, 2) +
+                    Math.pow(food.position.z - GAME.player.position.z, 2)
+                );
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestFood = { id, food };
+                }
+            });
+
+            if (nearestFood) {
+                GAME.isEating = true;
+                GAME.isEatingTimer = 2;
+                document.getElementById('eatIndicator').classList.add('active');
+
+                if (GAME.dinoSound) GAME.dinoSound.playEat();
+
+                // Eat food
+                const food = nearestFood.food;
+                if (food.type === 'meat') {
+                    GAME.player.hunger = Math.min(GAME.player.hunger + 50, GAME.player.dinosaurId.maxHunger);
+                    GAME.player.health = Math.min(GAME.player.health + 20, GAME.player.dinosaurId.maxHealth);
+                } else if (food.type === 'berry') {
+                    GAME.player.hunger = Math.min(GAME.player.hunger + 30, GAME.player.dinosaurId.maxHunger);
+                }
+
+                GAME.food.delete(nearestFood.id);
+                GAME.scene.remove(food);
+
+                setTimeout(() => {
+                    GAME.isEating = false;
+                    document.getElementById('eatIndicator').classList.remove('active');
+                }, 2000);
+            }
+
+            // Find nearby water
+            let nearestWater = null;
+            minDist = 5;
+
+            GAME.water.forEach((water, id) => {
+                const dist = Math.sqrt(
+                    Math.pow(water.position.x - GAME.player.position.x, 2) +
+                    Math.pow(water.position.z - GAME.player.position.z, 2)
+                );
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestWater = { id, water };
+                }
+            });
+
+            if (nearestWater) {
+                GAME.player.thirst = Math.min(GAME.player.thirst + 20, GAME.player.dinosaurId.maxThirst);
+                if (GAME.dinoSound) GAME.dinoSound.playWater();
+            }
+        }
+
+        // Toggle menu
+        function toggleMenu() {
+            const menu = document.getElementById('menu');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                showMenuSection('in-game');
+            } else {
+                menu.classList.add('hidden');
+            }
+        }
+
+        function showMenuSection(section) {
+            document.getElementById('menu-pre-game').style.display = 'none';
+            document.getElementById('menu-in-game').style.display = 'none';
+            document.getElementById('menu-controls').style.display = 'none';
+            document.getElementById('menu-settings').style.display = 'none';
+            if (section === 'in-game') {
+                document.getElementById('menu-in-game').style.display = 'block';
+            } else if (section === 'controls') {
+                document.getElementById('menu-controls').style.display = 'block';
+            } else if (section === 'settings') {
+                document.getElementById('menu-settings').style.display = 'block';
+            } else if (section === 'pre-game') {
+                document.getElementById('menu-pre-game').style.display = 'block';
+            }
+        }
+
+        function resumeGame() {
+            document.getElementById('menu').classList.add('hidden');
+            if (document.pointerLockElement !== GAME.renderer.domElement) {
+                GAME.renderer.domElement.requestPointerLock();
+            }
+        }
+
+        function leaveGame() {
+            if (GAME.ws) { GAME.ws.close(); }
+            location.reload();
+        }
+
+        function logoutGame() {
+            localStorage.removeItem('dino_token');
+            localStorage.removeItem('dino_user');
+            if (GAME.ws) { GAME.ws.close(); }
+            location.reload();
+        }
+
+        // Toggle leaderboard
+        function toggleLeaderboard() {
+            const leaderboard = document.getElementById('leaderboard');
+            leaderboard.style.display = leaderboard.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Send chat message
+        function sendChat() {
+            const chatInput = document.getElementById('chatInput');
+            const message = chatInput.value.trim();
+            if (!message || !GAME.player) return;
+
+            const chat = document.getElementById('chat');
+            const msgEl = document.createElement('div');
+            msgEl.className = 'chat-message';
+            msgEl.innerHTML = `<strong>${GAME.player.name}:</strong> ${message}`;
+            chat.appendChild(msgEl);
+            chat.scrollTop = chat.scrollHeight;
+            chatInput.value = '';
+
+            // Send to server
+            GAME.ws.send(JSON.stringify({
+                type: 'chat',
+                message: message,
+                playerId: GAME.player.id
+            }));
+        }
+
+        // Respawn
+        function respawn() {
+            GAME.isDead = false;
+            GAME.player.health = GAME.player.dinosaurId.maxHealth;
+            GAME.player.stamina = GAME.player.dinosaurId.maxStamina;
+            GAME.player.hunger = GAME.player.dinosaurId.maxHunger;
+            GAME.player.thirst = GAME.player.dinosaurId.maxThirst;
+            document.getElementById('deathScreen').classList.remove('active');
+        }
+
+        // Select dinosaur
+        function selectDino(dinoId) {
+            GAME.selectedDino = dinoId;
+            document.querySelectorAll('.dino-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.querySelector(`[data-dino="${dinoId}"]`).classList.add('selected');
+
+            // Enable start button if name is filled
+            const nameInput = document.getElementById('playerName').value.trim();
+            document.getElementById('startBtn').disabled = !nameInput;
+        }
+
+        // Select phylogeny
+        function selectPhylo(phylo) {
+            GAME.selectedPhylo = phylo;
+            document.querySelectorAll('#phyloSelection .dino-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.querySelector(`[data-phylo="${phylo}"]`).classList.add('selected');
+
+            // Filter dinosaurs
+            filterDinos();
+        }
+
+        // Filter dinosaurs
+        function filterDinos() {
+            const selection = document.getElementById('dinoSelection');
+            selection.innerHTML = '';
+
+            Object.values(DINOSAURS).forEach(dino => {
+                if (GAME.selectedPhylo !== 'all' && dino.type !== GAME.selectedPhylo) return;
+
+                const card = document.createElement('div');
+                card.className = 'dino-card';
+                card.dataset.dino = dino.id;
+                card.onclick = () => selectDino(dino.id);
+
+                const icon = document.createElement('div');
+                icon.className = 'dino-icon';
+                icon.style.background = `linear-gradient(135deg, ${dino.color}, ${dino.bodyColor})`;
+
+                const name = document.createElement('div');
+                name.className = 'dino-name';
+                name.textContent = dino.name;
+
+                const type = document.createElement('div');
+                type.className = 'dino-type';
+                type.textContent = dino.type === 'carnivore' ? 'Carnívoro' : 'Herbívoro';
+
+                const tier = document.createElement('div');
+                tier.className = 'dino-tier';
+                tier.textContent = `Tier ${dino.tier}`;
+
+                card.appendChild(icon);
+                card.appendChild(name);
+                card.appendChild(type);
+                card.appendChild(tier);
+                selection.appendChild(card);
+            });
+        }
+
+        // Initialize
+        document.getElementById('playerName').addEventListener('input', () => {
+            const name = document.getElementById('playerName').value.trim();
+            document.getElementById('startBtn').disabled = !name || !GAME.selectedDino;
+        });
+
+        // Populate dinosaurs
+        function populateDinos() {
+            const selection = document.getElementById('dinoSelection');
+            Object.values(DINOSAURS).forEach(dino => {
+                const card = document.createElement('div');
+                card.className = 'dino-card';
+                card.dataset.dino = dino.id;
+                card.onclick = () => selectDino(dino.id);
+
+                const icon = document.createElement('div');
+                icon.className = 'dino-icon';
+                icon.style.background = `linear-gradient(135deg, ${dino.color}, ${dino.bodyColor})`;
+
+                const name = document.createElement('div');
+                name.className = 'dino-name';
+                name.textContent = dino.name;
+
+                const type = document.createElement('div');
+                type.className = 'dino-type';
+                type.textContent = dino.type === 'carnivore' ? 'Carnívoro' : 'Herbívoro';
+
+                const tier = document.createElement('div');
+                tier.className = 'dino-tier';
+                tier.textContent = `Tier ${dino.tier}`;
+
+                card.appendChild(icon);
+                card.appendChild(name);
+                card.appendChild(type);
+                card.appendChild(tier);
+                selection.appendChild(card);
+            });
+        }
+
+        // Initialize the game
+        window.addEventListener('load', () => {
+            populateDinos();
+            filterDinos();
+        });
+
+        // Update minimap
+        function updateMinimap() {
+            const player = document.getElementById('minimapPlayer');
+            if (!GAME.player) return;
+
+            const minimap = document.getElementById('minimap');
+            const minimapSize = 150;
+            const mapScale = minimapSize / GAME.mapSize;
+
+            // Player position
+            player.style.left = `${minimapSize / 2 + GAME.player.position.x * mapScale}px`;
+            player.style.top = `${minimapSize / 2 - GAME.player.position.z * mapScale}px`;
+
+            // Dinosaur positions
+            minimap.querySelectorAll('.minimap-dino').forEach(el => el.remove());
+            GAME.npcs.forEach((dino, id) => {
+                const dot = document.createElement('div');
+                dot.className = 'minimap-dot minimap-dino';
+                dot.style.left = `${minimapSize / 2 + dino.position.x * mapScale}px`;
+                dot.style.top = `${minimapSize / 2 - dino.position.z * mapScale}px`;
+                minimap.appendChild(dot);
+            });
+
+            // Food positions
+            minimap.querySelectorAll('.minimap-food').forEach(el => el.remove());
+            GAME.food.forEach((food, id) => {
+                const dot = document.createElement('div');
+                dot.className = 'minimap-dot minimap-food';
+                dot.style.left = `${minimapSize / 2 + food.position.x * mapScale}px`;
+                dot.style.top = `${minimapSize / 2 - food.position.z * mapScale}px`;
+                minimap.appendChild(dot);
+            });
+
+            // Water positions
+            minimap.querySelectorAll('.minimap-water').forEach(el => el.remove());
+            GAME.water.forEach((water, id) => {
+                const dot = document.createElement('div');
+                dot.className = 'minimap-dot minimap-water';
+                dot.style.left = `${minimapSize / 2 + water.position.x * mapScale}px`;
+                dot.style.top = `${minimapSize / 2 - water.position.z * mapScale}px`;
+                minimap.appendChild(dot);
+            });
+        }
+
+        // Update ecosystem
+        function updateEcosystem() {
+            if (!GAME.player) return;
+
+            let carnivores = 0;
+            let herbivores = 0;
+            let omnivores = 0;
+
+            // Count other players
+            GAME.otherPlayers.forEach((dino, id) => {
+                const dinoData = DINOSAURS[dino.dinosaurId];
+                if (dinoData.type === 'carnivore') carnivores++;
+                else if (dinoData.type === 'herbivore') herbivores++;
+                else omnivores++;
+            });
+
+            // Count NPCs
+            GAME.npcs.forEach((dino, id) => {
+                const dinoData = DINOSAURS[dino.dinosaurId];
+                if (dinoData.type === 'carnivore') carnivores++;
+                else if (dinoData.type === 'herbivore') herbivores++;
+                else omnivores++;
+            });
+
+            document.getElementById('carnivoreCount').textContent = carnivores;
+            document.getElementById('herbivoreCount').textContent = herbivores;
+            document.getElementById('omnivoreCount').textContent = omnivores;
+        }
+
+        // Update food count
+        function updateFoodCount() {
+            let meat = 0, berry = 0, fish = 0;
+
+            GAME.food.forEach((food, id) => {
+                if (food.type === 'meat') meat++;
+                else if (food.type === 'berry') berry++;
+                else if (food.type === 'fish') fish++;
+            });
+
+            document.getElementById('foodCountValue').textContent = meat;
+            document.getElementById('berryCountValue').textContent = berry;
+            document.getElementById('fishCountValue').textContent = fish;
+        }
+
+        // Start game loop for updates
+        setInterval(() => {
+            if (GAME.isPlaying) {
+                updateMinimap();
+                updateEcosystem();
+                updateFoodCount();
+            }
+        }, 1000);
+
+        // Pointer lock for camera control - only on canvas click
+        document.getElementById('gameCanvas').addEventListener('click', (e) => {
+            if (GAME.isPlaying && !GAME.mouse.isPointerLocked) {
+                GAME.renderer.domElement.requestPointerLock();
+            }
+        });
+
+        // Handle wheel for camera distance
+        document.addEventListener('wheel', (e) => {
+            if (GAME.isPlaying) {
+                GAME.cameraDistance += e.deltaY * 0.01;
+                GAME.cameraDistance = Math.max(5, Math.min(30, GAME.cameraDistance));
+            }
+        });
+
+        // Handle mouse click for attack
+        document.addEventListener('mousedown', (e) => {
+            if (!GAME.isPlaying) return;
+            const tag = e.target.tagName;
+            if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+            if (e.target.closest('#menu') || e.target.closest('#auth-overlay') || e.target.closest('.chat-input') || e.target.closest('.controls')) return;
+            if (e.button === 0) {
+                attack();
+            } else if (e.button === 2) {
+                secondaryAttack();
+            }
+        });
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Handle mouse movement for camera
+        document.addEventListener('mousemove', (e) => {
+            const cursor = document.getElementById('gameCursor');
+            if (GAME.mouse.isPointerLocked) {
+                GAME.mouse.x += e.movementX;
+                GAME.mouse.y += e.movementY;
+                cursor.style.left = GAME.mouse.x + 'px';
+                cursor.style.top = GAME.mouse.y + 'px';
+                if (GAME.isPlaying) {
+                    const sens = GAME.mouseSensitivity || 1;
+                    GAME.cameraAngle.x -= e.movementX * 0.005 * sens;
+                    GAME.cameraAngle.y = Math.max(0.1, Math.min(1.5, GAME.cameraAngle.y - e.movementY * 0.005 * sens));
+                }
+            } else {
+                GAME.mouse.x = e.clientX;
+                GAME.mouse.y = e.clientY;
+                cursor.style.left = e.clientX + 'px';
+                cursor.style.top = e.clientY + 'px';
+            }
+        });
+
+        // Handle pointer lock events
+        document.addEventListener('pointerlockchange', () => {
+            GAME.mouse.isPointerLocked = document.pointerLockElement === GAME.renderer.domElement;
+            const cursor = document.getElementById('gameCursor');
+            if (GAME.mouse.isPointerLocked) {
+                document.body.classList.add('pointer-locked');
+                GAME.mouse.x = window.innerWidth / 2;
+                GAME.mouse.y = window.innerHeight / 2;
+                cursor.style.left = GAME.mouse.x + 'px';
+                cursor.style.top = GAME.mouse.y + 'px';
+            } else {
+                document.body.classList.remove('pointer-locked');
+            }
+        });
+
+        // Handle pointer lock error
+        document.addEventListener('pointerlockerror', (e) => {
+            console.warn('Pointer lock failed:', e);
+        });
+
+        // Handle window focus/blur for attention hook
+        window.addEventListener('blur', () => {
+            if (GAME.isPlaying && GAME.mouse.isPointerLocked) {
+                document.exitPointerLock();
+                document.title = '⏸ PAUSED - Dino Survival';
+            }
+        });
+
+        window.addEventListener('focus', () => {
+            document.title = 'Dino Survival';
+            if (GAME.isPlaying && GAME.renderer) {
+                setTimeout(() => {
+                    GAME.renderer.domElement.requestPointerLock();
+                }, 100);
+            }
+        });
+
+        // Handle visibility change (tab switch)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (GAME.mouse.isPointerLocked) document.exitPointerLock();
+            } else {
+                if (GAME.isPlaying && GAME.renderer) {
+                    setTimeout(() => {
+                        GAME.renderer.domElement.requestPointerLock();
+                    }, 100);
+                }
+            }
+        });
+
+        // Handle Escape to release pointer lock
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape' && GAME.mouse.isPointerLocked) {
+                document.exitPointerLock();
+            }
+        });
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            if (GAME.camera) {
+                GAME.camera.aspect = window.innerWidth / window.innerHeight;
+                GAME.camera.updateProjectionMatrix();
+                GAME.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+
+        // Handle game over
+        function handleGameOver(cause) {
+            GAME.isDead = true;
+            document.getElementById('deathScreen').classList.add('active');
+            document.getElementById('deathCause').textContent = cause;
+        }
+
+        // Handle player death
+        function handlePlayerDeath(cause) {
+            handleGameOver(cause);
+        }
+
+        // Handle NPC death
+        function handleNPCDeath(id) {
+            GAME.npcs.delete(id);
+        }
+
+        // Handle food eaten
+        function handleFoodEaten(id) {
+            GAME.food.delete(id);
+        }
+
+        // Handle player join
+        function handlePlayerJoin(playerId) {
+            const newPlayer = createNewPlayer();
+            GAME.otherPlayers.set(playerId, newPlayer);
+        }
+
+        // Handle player leave
+        function handlePlayerLeave(playerId) {
+            GAME.otherPlayers.delete(playerId);
+        }
+
+        // Handle player death
+        function handlePlayerDeath(playerId) {
+            const player = GAME.otherPlayers.get(playerId);
+            if (player) {
+                player.isDead = true;
+            }
+        }
+
+        // Handle chat message
+        function handleChatMessage(playerId, message) {
+            const player = GAME.otherPlayers.get(playerId);
+            if (player) {
+                const chat = document.getElementById('chat');
+                const msgEl = document.createElement('div');
+                msgEl.className = 'chat-message';
+                msgEl.innerHTML = `<strong>${player.name}:</strong> ${message}`;
+                chat.appendChild(msgEl);
+                chat.scrollTop = chat.scrollHeight;
+            }
+        }
+
+        // Handle world state update
+        function handleWorldStateUpdate(data) {
+            // Update all players
+            data.players.forEach(p => {
+                if (GAME.otherPlayers.has(p.id)) {
+                    const existing = GAME.otherPlayers.get(p.id);
+                    existing.position.x = p.position.x;
+                    existing.position.z = p.position.z;
+                    existing.rotation = p.rotation;
+                    existing.health = p.health;
+                }
+            });
+
+            // Update all dinosaurs
+            data.dinosaurs.forEach(d => {
+                if (GAME.npcs.has(d.id)) {
+                    const existing = GAME.npcs.get(d.id);
+                    existing.position.x = d.position.x;
+                    existing.position.z = d.position.z;
+                    existing.rotation = d.rotation;
+                    existing.health = d.health;
+                }
+            });
+
+            // Update food
+            data.food.forEach(f => {
+                if (GAME.food.has(f.id)) {
+                    const existing = GAME.food.get(f.id);
+                    existing.position.x = f.position.x;
+                    existing.position.z = f.position.z;
+                }
+            });
+
+            // Update water
+            data.water.forEach(w => {
+                if (GAME.water.has(w.id)) {
+                    const existing = GAME.water.get(w.id);
+                    existing.position.x = w.position.x;
+                    existing.position.z = w.position.z;
+                }
+            });
+
+            // Update counts
+            document.getElementById('playerCount').textContent = data.players.length;
+            document.getElementById('dinoCount').textContent = data.dinosaurs.length;
+        }
+
+        // Handle update message
+        function handleUpdateMessage(data) {
+            // Update all players
+            data.players.forEach(p => {
+                if (GAME.otherPlayers.has(p.id)) {
+                    const existing = GAME.otherPlayers.get(p.id);
+                    existing.position.x = p.position.x;
+                    existing.position.z = p.position.z;
+                    existing.rotation = p.rotation;
+                    existing.health = p.health;
+                }
+            });
+
+            // Update all dinosaurs
+            data.dinosaurs.forEach(d => {
+                if (GAME.npcs.has(d.id)) {
+                    const existing = GAME.npcs.get(d.id);
+                    existing.position.x = d.position.x;
+                    existing.position.z = d.position.z;
+                    existing.rotation = d.rotation;
+                    existing.health = d.health;
+                }
+            });
+
+            // Update food
+            data.food.forEach(f => {
+                if (GAME.food.has(f.id)) {
+                    const existing = GAME.food.get(f.id);
+                    existing.position.x = f.position.x;
+                    existing.position.z = f.position.z;
+                }
+            });
+
+            // Update water
+            data.water.forEach(w => {
+                if (GAME.water.has(w.id)) {
+                    const existing = GAME.water.get(w.id);
+                    existing.position.x = w.position.x;
+                    existing.position.z = w.position.z;
+                }
+            });
+
+            updateHUD();
+        }
+
+        // Handle player removed
+        function handlePlayerRemoved(playerId) {
+            GAME.otherPlayers.delete(playerId);
+        }
+
+        // Handle weather change
+        function handleWeatherChange(weather) {
+            GAME.weather = weather;
+            const weatherEl = document.getElementById('weather');
+
+            switch (weather) {
+                case 'clear':
+                    weatherEl.innerHTML = '☀️ Claro';
+                    break;
+                case 'rain':
+                    weatherEl.innerHTML = '🌧️ Chuva';
+                    break;
+                case 'storm':
+                    weatherEl.innerHTML = '⛈️ Tempestade';
+                    break;
+                case 'fog':
+                    weatherEl.innerHTML = '🌫️ Neblina';
+                    break;
+                case 'snow':
+                    weatherEl.innerHTML = '❄️ Neve';
+                    break;
+            }
+        }
+
+        // Handle temperature change
+        function handleTemperatureChange(temp) {
+            GAME.temperature = temp;
+            document.getElementById('temperature').textContent = `${Math.round(temp)}°C`;
+        }
+
+        // Handle day/night change
+        function handleDayNightChange(isDay) {
+            const dayNightEl = document.getElementById('dayNight');
+            if (isDay) {
+                dayNightEl.innerHTML = '☀️ Dia';
+            } else {
+                dayNightEl.innerHTML = '🌙 Noite';
+            }
+        }
+
+        // Handle food spawn
+        function handleFoodSpawn(foodId, type, position) {
+            const food = createFoodModel(type);
+            food.position.set(position.x, position.y, position.z);
+            GAME.scene.add(food);
+            GAME.food.set(foodId, food);
+        }
+
+        // Handle water spawn
+        function handleWaterSpawn(waterId, position) {
+            const water = createWaterModel(waterId, position);
+            GAME.water.set(waterId, water);
+        }
+
+        // Handle NPC spawn
+        function handleNPCSpawn(npcId, dinosaurId, position) {
+            const dinoModel = createDinoModel(DINOSAURS[dinosaurId]);
+            dinoModel.position.set(position.x, position.y, position.z);
+            GAME.scene.add(dinoModel);
+            GAME.npcs.set(npcId, dinoModel);
+        }
+
+        // Handle NPC death
+        function handleNPCDeath(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                GAME.scene.remove(npc);
+                GAME.npcs.delete(npcId);
+            }
+        }
+
+        // Handle NPC movement
+        function handleNPCMovement(npcId, position, rotation) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.position.x = position.x;
+                npc.position.z = position.z;
+                npc.rotation.y = rotation;
+            }
+        }
+
+        // Handle NPC attack
+        function handleNPCAttack(npcId, targetId, damage) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isAttacking = true;
+                setTimeout(() => {
+                    npc.isAttacking = false;
+                }, 1000);
+            }
+        }
+
+        // Handle NPC eating
+        function handleNPCEating(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isEating = true;
+                setTimeout(() => {
+                    npc.isEating = false;
+                }, 2000);
+            }
+        }
+
+        // Handle NPC drinking
+        function handleNPCDrinking(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isDrinking = true;
+                setTimeout(() => {
+                    npc.isDrinking = false;
+                }, 2000);
+            }
+        }
+
+        // Handle NPC fleeing
+        function handleNPCFleeing(npcId, targetPosition) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isFleeing = true;
+                npc.fleeTarget = targetPosition;
+                setTimeout(() => {
+                    npc.isFleeing = false;
+                }, 5000);
+            }
+        }
+
+        // Handle NPC hunting
+        function handleNPCHunting(npcId, targetId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isHunting = true;
+                npc.huntTarget = targetId;
+            }
+        }
+
+        // Handle NPC idle
+        function handleNPCIdle(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isIdle = true;
+                npc.idleTimer = 3 + Math.random() * 3;
+            }
+        }
+
+        // Handle NPC wandering
+        function handleNPCWandering(npcId, position) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isWandering = true;
+                npc.wanderTarget = position;
+                npc.wanderTimer = 3 + Math.random() * 3;
+            }
+        }
+
+        // Handle NPC attacking another NPC
+        function handleNPCAttackNPC(npcId, targetId, damage) {
+            const npc = GAME.npcs.get(npcId);
+            const target = GAME.npcs.get(targetId);
+            if (npc && target) {
+                npc.isAttacking = true;
+                target.health -= damage;
+                if (target.health <= 0) {
+                    handleNPCDeath(targetId);
+                }
+                setTimeout(() => {
+                    npc.isAttacking = false;
+                }, 1000);
+            }
+        }
+
+        // Handle NPC being eaten
+        function handleNPCBeingEaten(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isBeingEaten = true;
+                setTimeout(() => {
+                    npc.isBeingEaten = false;
+                }, 2000);
+            }
+        }
+
+        // Handle NPC being attacked
+        function handleNPCBeingAttacked(npcId, attackerId, damage) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.health -= damage;
+                if (npc.health <= 0) {
+                    handleNPCDeath(npcId);
+                }
+            }
+        }
+
+        // Handle NPC being ridden
+        function handleNPCBeingRidden(npcId, riderId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isRidden = true;
+                npc.riddenBy = riderId;
+            }
+        }
+
+        // Handle NPC stopping being ridden
+        function handleNPCStoppingBeingRidden(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isRidden = false;
+                npc.riddenBy = null;
+            }
+        }
+
+        // Handle NPC spawning
+        function handleNPCSpawning(npcId, dinosaurId, position) {
+            handleNPCSpawn(npcId, dinosaurId, position);
+        }
+
+        // Handle NPC despawning
+        function handleNPCDespawning(npcId) {
+            handleNPCDeath(npcId);
+        }
+
+        // Handle NPC health change
+        function handleNPCHealthChange(npcId, health) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.health = health;
+            }
+        }
+
+        // Handle NPC stamina change
+        function handleNPCStaminaChange(npcId, stamina) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.stamina = stamina;
+            }
+        }
+
+        // Handle NPC hunger change
+        function handleNPCHungerChange(npcId, hunger) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.hunger = hunger;
+            }
+        }
+
+        // Handle NPC thirst change
+        function handleNPCThirstChange(npcId, thirst) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.thirst = thirst;
+            }
+        }
+
+        // Handle NPC sprinting
+        function handleNPCKicking(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isKicking = true;
+                setTimeout(() => {
+                    npc.isKicking = false;
+                }, 500);
+            }
+        }
+
+        // Handle NPC roaring
+        function handleNPCRoaring(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isRoaring = true;
+                setTimeout(() => {
+                    npc.isRoaring = false;
+                }, 2000);
+            }
+        }
+
+        // Handle NPC hissing
+        function handleNPCHisssing(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isHissing = true;
+                setTimeout(() => {
+                    npc.isHissing = false;
+                }, 1000);
+            }
+        }
+
+        // Handle NPC chirping
+        function handleNPCChirping(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isChirping = true;
+                setTimeout(() => {
+                    npc.isChirping = false;
+                }, 1000);
+            }
+        }
+
+        // Handle NPC growling
+        function handleNPCGrowling(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isGrowling = true;
+                setTimeout(() => {
+                    npc.isGrowling = false;
+                }, 1500);
+            }
+        }
+
+        // Handle NPC snarling
+        function handleNPCSnarling(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isSnarling = true;
+                setTimeout(() => {
+                    npc.isSnarling = false;
+                }, 1000);
+            }
+        }
+
+        // Handle NPC whimpering
+        function handleNPCWhimpering(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isWhimpering = true;
+                setTimeout(() => {
+                    npc.isWhimpering = false;
+                }, 2000);
+            }
+        }
+
+        // Handle NPC panting
+        function handleNPCPanting(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isPanting = true;
+                npc.pantingTimer = 5 + Math.random() * 5;
+            }
+        }
+
+        // Handle NPC yawning
+        function handleNPCYawning(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isYawning = true;
+                npc.yawningTimer = 3 + Math.random() * 3;
+            }
+        }
+
+        // Handle NPC snorting
+        function handleNPCSnorting(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isSnorting = true;
+                npc.snortingTimer = 2 + Math.random() * 2;
+            }
+        }
+
+        // Handle NPC bellowing
+        function handleNPCBellowing(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isBellowing = true;
+                npc.bellowingTimer = 5 + Math.random() * 5;
+            }
+        }
+
+        // Handle NPC clicking
+        function handleNPCClicking(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isClicking = true;
+                npc.clickingTimer = 2 + Math.random() * 2;
+            }
+        }
+
+        // Handle NPC croaking
+        function handleNPCCroaking(npcId) {
+            const npc = GAME.npcs.get(npcId);
+            if (npc) {
+                npc.isCroaking = true;
+                npc.croakingTimer = 3 + Math.random() * 3;
+            }
+        }
+}
+    </script>
+</body>
+</html>

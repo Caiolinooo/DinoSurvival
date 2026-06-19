@@ -10,19 +10,19 @@ async function register(username, email, password) {
     const db = getDb();
     if (!db) throw new Error('Database not initialized');
 
-    const existing = db.exec(`SELECT id FROM users WHERE username = ? OR email = ?`, { bind: [username, email] });
+    const existing = db.exec(`SELECT id FROM users WHERE username = ? OR email = ?`, [username, email]);
     if (existing.length > 0 && existing[0].values.length > 0) {
         throw new Error('Usuário ou email já cadastrado');
     }
 
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    db.run(`INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)`, { bind: [username, email, hash] });
-    const result = db.exec(`SELECT id FROM users WHERE username = ?`, { bind: [username] });
+    db.run(`INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)`, [username, email, hash]);
+    const result = db.exec(`SELECT id FROM users WHERE username = ?`, [username]);
     const userId = result[0].values[0][0];
 
     const token = jwt.sign({ userId, username }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    db.run(`INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)`, { bind: [userId, token, expiresAt] });
+    db.run(`INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)`, [userId, token, expiresAt]);
 
     return { userId, username, token };
 }
@@ -31,7 +31,7 @@ async function login(username, password) {
     const db = getDb();
     if (!db) throw new Error('Database not initialized');
 
-    const result = db.exec(`SELECT id, username, password_hash, is_banned, ban_reason FROM users WHERE username = ?`, { bind: [username] });
+    const result = db.exec(`SELECT id, username, password_hash, is_banned, ban_reason FROM users WHERE username = ?`, [username]);
     if (result.length === 0 || result[0].values.length === 0) {
         throw new Error('Usuário ou senha inválidos');
     }
@@ -54,8 +54,8 @@ async function login(username, password) {
 
     const token = jwt.sign({ userId, username: dbUsername }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    db.run(`INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)`, { bind: [userId, token, expiresAt] });
-    db.run(`UPDATE users SET last_login = datetime('now') WHERE id = ?`, { bind: [userId] });
+    db.run(`INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)`, [userId, token, expiresAt]);
+    db.run(`UPDATE users SET last_login = datetime('now') WHERE id = ?`, [userId]);
 
     return { userId, username: dbUsername, token };
 }
@@ -65,7 +65,7 @@ function verifyToken(token) {
         const decoded = jwt.verify(token, JWT_SECRET);
         const db = getDb();
         if (!db) return null;
-        const result = db.exec(`SELECT id FROM sessions WHERE token = ? AND is_active = 1 AND expires_at > datetime('now')`, { bind: [token] });
+        const result = db.exec(`SELECT id FROM sessions WHERE token = ? AND is_active = 1 AND expires_at > datetime('now')`, [token]);
         if (result.length === 0 || result[0].values.length === 0) return null;
         return decoded;
     } catch (e) {
@@ -76,7 +76,7 @@ function verifyToken(token) {
 function logout(token) {
     const db = getDb();
     if (!db) return;
-    db.run(`UPDATE sessions SET is_active = 0 WHERE token = ?`, { bind: [token] });
+    db.run(`UPDATE sessions SET is_active = 0 WHERE token = ?`, [token]);
 }
 
 module.exports = { register, login, verifyToken, logout, JWT_SECRET };

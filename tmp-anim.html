@@ -1430,7 +1430,6 @@
 
     <!-- Fog effect -->
     <div class="fog-effect" id="fogEffect"></div>
-
     <!-- Night vision overlay -->
     <div class="night-vision-overlay" id="nightVisionOverlay"></div>
 
@@ -1438,6 +1437,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
 
     <script src="js/dino-viewer.js"></script>
     <script src="js/auth-ui.js"></script>
@@ -1522,8 +1522,7 @@
         let gltfLoader = null;
 
         function tryLoadGLB(dinoId, targetGroup, onComplete) {
-            const filename = MODEL_REGISTRY[dinoId];
-            if (!filename) { if (onComplete) onComplete(); return; }
+            const filename = MODEL_REGISTRY[dinoId] || (dinoId + '.glb');
             if (modelCache.has(filename)) {
                 const cached = modelCache.get(filename).scene.clone();
                 targetGroup.add(cached);
@@ -2322,11 +2321,31 @@ function initThreeJS() {
                 });
 
                 // Update food
+                const currentFoodIds = new Set(data.food.map(f => f.id));
+                // Remove deleted food
+                GAME.food.forEach((existing, id) => {
+                    if (!currentFoodIds.has(id)) {
+                        GAME.scene.remove(existing);
+                        GAME.food.delete(id);
+                    }
+                });
+                
                 data.food.forEach(f => {
                     if (GAME.food.has(f.id)) {
                         const existing = GAME.food.get(f.id);
                         existing.position.x = f.position.x;
                         existing.position.z = f.position.z;
+                        if (existing.userData && f.amount !== undefined) {
+                            existing.userData.amount = f.amount;
+                            if (typeof existing.userData.updateVisuals === 'function') {
+                                existing.userData.updateVisuals();
+                            }
+                        }
+                    } else {
+                        const newFood = createFoodModel(f.type, f.amount || 100);
+                        newFood.position.set(f.position.x, f.position.y || 0.5, f.position.z);
+                        GAME.scene.add(newFood);
+                        GAME.food.set(f.id, newFood);
                     }
                 });
 
@@ -2343,18 +2362,61 @@ function initThreeJS() {
             }
         }
 
-        // Create food model
-        function createFoodModel(type) {
-            const color = type === 'berry' ? 0x44ff44 : 0xff4444;
-            const geometry = new THREE.SphereGeometry(0.5, 8, 8);
-            const material = new THREE.MeshStandardMaterial({
-                color: color,
-                roughness: 0.8,
-                metalness: 0.1
-            });
-            const food = new THREE.Mesh(geometry, material);
-            food.castShadow = true;
-            return food;
+        // Create food model with visual tearing states
+        function createFoodModel(type, amount = 100) {
+            const group = new THREE.Group();
+            group.userData = { type, amount, maxAmount: amount };
+            
+            if (type === 'meat') {
+                // Base carcass (meat part)
+                const geometry = new THREE.CylinderGeometry(0.5, 0.8, 1.5, 8);
+                geometry.rotateZ(Math.PI/2);
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0x990000, roughness: 0.9, metalness: 0.1
+                });
+                const meatMesh = new THREE.Mesh(geometry, material);
+                meatMesh.castShadow = true;
+                
+                // Rib cage (visible when eaten)
+                const ribGeom = new THREE.TorusGeometry(0.6, 0.05, 8, 8, Math.PI);
+                const ribMat = new THREE.MeshStandardMaterial({ color: 0xddddcc });
+                const ribs = new THREE.Group();
+                for(let i=-0.5; i<=0.5; i+=0.3) {
+                    const r = new THREE.Mesh(ribGeom, ribMat);
+                    r.position.x = i; r.rotation.y = Math.PI/2;
+                    ribs.add(r);
+                }
+                ribs.position.y = -0.5; // hidden initially inside meat
+                
+                group.add(meatMesh);
+                group.add(ribs);
+                group.userData.meatMesh = meatMesh;
+                group.userData.ribs = ribs;
+            } else {
+                // Berry/Plant bush
+                const geometry = new THREE.SphereGeometry(0.8, 8, 8);
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0x228822, roughness: 0.8
+                });
+                const plant = new THREE.Mesh(geometry, material);
+                plant.castShadow = true;
+                group.add(plant);
+                group.userData.plantMesh = plant;
+            }
+            
+            // Method to update visual based on eating (Tearing logic)
+            group.userData.updateVisuals = function() {
+                const ratio = this.amount / this.maxAmount;
+                if (this.type === 'meat') {
+                    this.meatMesh.scale.set(ratio, ratio, ratio);
+                    this.ribs.position.y = 0.5 * (1.0 - ratio); // ribs protrude as meat shrinks
+                } else {
+                    this.plantMesh.scale.set(0.5 + (ratio * 0.5), ratio, 0.5 + (ratio * 0.5));
+                }
+            };
+            
+            group.userData.updateVisuals();
+            return group;
         }
 
         // Create water model
@@ -2372,6 +2434,123 @@ function initThreeJS() {
             water.position.set(position.x, -0.1, position.z);
             return water;
         }
+
+        // Visual FX System for Gore & Realism
+        class VisualFXSystem {
+            constructor() {
+                this.particles = [];
+                // Create a realistic blood texture using canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = 64; canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+                gradient.addColorStop(0, 'rgba(150, 0, 0, 1)');
+                gradient.addColorStop(0.3, 'rgba(100, 0, 0, 0.9)');
+                gradient.addColorStop(1, 'rgba(50, 0, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath(); ctx.arc(32, 32, 32, 0, Math.PI * 2); ctx.fill();
+                this.bloodTexture = new THREE.CanvasTexture(canvas);
+                
+                this.particleMaterial = new THREE.SpriteMaterial({ 
+                    map: this.bloodTexture, 
+                    color: 0x990000,
+                    transparent: true,
+                    blending: THREE.NormalBlending
+                });
+
+                // Create a flesh wound texture using canvas
+                const woundCanvas = document.createElement('canvas');
+                woundCanvas.width = 128; woundCanvas.height = 128;
+                const wCtx = woundCanvas.getContext('2d');
+                wCtx.fillStyle = 'rgba(0,0,0,0)'; wCtx.fillRect(0,0,128,128);
+                wCtx.fillStyle = '#400';
+                wCtx.beginPath(); wCtx.ellipse(64, 64, 40, 15, Math.PI/4, 0, Math.PI*2); wCtx.fill();
+                wCtx.fillStyle = '#800';
+                wCtx.beginPath(); wCtx.ellipse(64, 64, 30, 8, Math.PI/4, 0, Math.PI*2); wCtx.fill();
+                wCtx.fillStyle = '#f00';
+                wCtx.beginPath(); wCtx.ellipse(64, 64, 20, 3, Math.PI/4, 0, Math.PI*2); wCtx.fill();
+                this.woundTexture = new THREE.CanvasTexture(woundCanvas);
+                this.woundMaterial = new THREE.MeshPhongMaterial({
+                    map: this.woundTexture,
+                    transparent: true,
+                    depthTest: true,
+                    depthWrite: false,
+                    polygonOffset: true,
+                    polygonOffsetFactor: -4,
+                    color: 0xffffff
+                });
+            }
+
+            spawnBlood(position, amount = 15) {
+                if (!GAME.scene) return;
+                for(let i=0; i<amount; i++) {
+                    const sprite = new THREE.Sprite(this.particleMaterial);
+                    const scale = 0.4 + Math.random() * 0.6;
+                    sprite.scale.set(scale, scale, scale);
+                    sprite.position.copy(position);
+                    sprite.position.x += (Math.random() - 0.5) * 2;
+                    sprite.position.y += (Math.random() - 0.5) * 2 + 1.0;
+                    sprite.position.z += (Math.random() - 0.5) * 2;
+                    GAME.scene.add(sprite);
+                    
+                    this.particles.push({
+                        mesh: sprite,
+                        velocity: new THREE.Vector3((Math.random()-0.5)*8, Math.random()*8, (Math.random()-0.5)*8),
+                        life: 3.0 + Math.random() * 3.0,
+                        maxLife: 6.0
+                    });
+                }
+            }
+
+            addWoundDecal(targetMesh, position, size = 1.0) {
+                if(!THREE.DecalGeometry || !targetMesh || !targetMesh.isMesh) return;
+                const orientation = new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+                const scale = new THREE.Vector3(size, size, size);
+                try {
+                    const decalGeometry = new THREE.DecalGeometry(targetMesh, position, orientation, scale);
+                    const decal = new THREE.Mesh(decalGeometry, this.woundMaterial);
+                    if (targetMesh.parent) {
+                        targetMesh.parent.add(decal);
+                    } else {
+                        GAME.scene.add(decal);
+                    }
+                } catch(e) {
+                    // Ignore decal failure on complex skinned meshes
+                }
+            }
+
+            update(delta) {
+                for(let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.life -= delta;
+                    if(p.life <= 0) {
+                        if (GAME.scene) GAME.scene.remove(p.mesh);
+                        this.particles.splice(i, 1);
+                        continue;
+                    }
+                    
+                    if (p.velocity.lengthSq() > 0.01) {
+                        p.velocity.y -= 15.0 * delta; // gravity
+                        p.mesh.position.addScaledVector(p.velocity, delta);
+                        
+                        // floor collision
+                        const groundY = typeof window.getTerrainHeight === 'function' 
+                            ? window.getTerrainHeight(p.mesh.position.x, p.mesh.position.z) 
+                            : 0;
+                        if(p.mesh.position.y <= groundY + 0.05) {
+                            p.mesh.position.y = groundY + 0.05;
+                            p.velocity.set(0,0,0);
+                            // flatten
+                            p.mesh.scale.set(1.5, 0.2, 1.5);
+                        }
+                    } else {
+                        // fade out slowly
+                        p.mesh.material.opacity = p.life / p.maxLife;
+                    }
+                }
+            }
+        }
+        window.vfx = new VisualFXSystem();
 
         // Update HUD
         function updateHUD() {
@@ -2408,6 +2587,9 @@ function initThreeJS() {
 
                 // Update game logic
                 update(delta, elapsed);
+
+                // Update Visual Effects
+                if (window.vfx) window.vfx.update(delta);
 
                 // Update camera
                 updateCamera();
@@ -2893,6 +3075,15 @@ function initThreeJS() {
 
             if (nearestTarget) {
                 nearestTarget.dino.health -= GAME.player.dinosaurId.attackDamage;
+                
+                // Spawn blood VFX
+                if (window.vfx && nearestTarget.dino.mesh) {
+                    const hitPos = nearestTarget.dino.mesh.position.clone();
+                    hitPos.y += 1.0; // center
+                    window.vfx.spawnBlood(hitPos, 20);
+                    window.vfx.addWoundDecal(nearestTarget.dino.mesh, hitPos, 1.5);
+                }
+
                 if (nearestTarget.dino.health <= 0) {
                     GAME.player.kills++;
                     // Drop food
@@ -2950,16 +3141,35 @@ function initThreeJS() {
                 if (GAME.dinoSound) GAME.dinoSound.playEat();
 
                 // Eat food
-                const food = nearestFood.food;
-                if (food.type === 'meat') {
+                const foodObj = nearestFood.food;
+                const type = foodObj.userData && foodObj.userData.type ? foodObj.userData.type : foodObj.type;
+                
+                if (type === 'meat') {
                     GAME.player.hunger = Math.min(GAME.player.hunger + 50, GAME.player.dinosaurId.maxHunger);
                     GAME.player.health = Math.min(GAME.player.health + 20, GAME.player.dinosaurId.maxHealth);
-                } else if (food.type === 'berry') {
+                } else if (type === 'berry') {
                     GAME.player.hunger = Math.min(GAME.player.hunger + 30, GAME.player.dinosaurId.maxHunger);
                 }
+                
+                // Spawn tearing particles
+                if (window.vfx && foodObj.position) {
+                    const fxPos = foodObj.position.clone();
+                    fxPos.y += 0.5;
+                    window.vfx.spawnBlood(fxPos, 15);
+                }
 
-                GAME.food.delete(nearestFood.id);
-                GAME.scene.remove(food);
+                if (foodObj.userData && typeof foodObj.userData.updateVisuals === 'function') {
+                    foodObj.userData.amount -= 34; // 3 bites to finish
+                    if (foodObj.userData.amount <= 0) {
+                        GAME.food.delete(nearestFood.id);
+                        GAME.scene.remove(foodObj);
+                    } else {
+                        foodObj.userData.updateVisuals();
+                    }
+                } else {
+                    GAME.food.delete(nearestFood.id);
+                    GAME.scene.remove(foodObj);
+                }
 
                 setTimeout(() => {
                     GAME.isEating = false;

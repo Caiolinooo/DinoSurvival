@@ -5,6 +5,11 @@ const { initDatabase, getDb } = require('./database');
 const { verifyToken } = require('./auth');
 const { WeatherSystem } = require('./weather');
 const { getDinoById } = require('./dinodefs');
+const { Ecosystem } = require('./ecosystem');
+const { AISystem } = require('./ai-system');
+const { GeneticsSystem } = require('./genetics');
+const { TribeManager } = require('./tribes');
+const { TrackingSystem } = require('./tracking');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,6 +21,11 @@ const mapSize = 1000;
 const foodSpawns = new Map();
 const waterSpawns = new Map();
 const weatherSystem = new WeatherSystem();
+const ecosystem = new Ecosystem(mapSize);
+const aiSystem = new AISystem();
+const geneticsSystem = new GeneticsSystem();
+const tribeManager = new TribeManager();
+const trackingSystem = new TrackingSystem();
 
 // Population quotas per species (tier-based + type-based)
 // Target: ~600 players, ~65% herbivores, ~35% carnivores
@@ -2167,6 +2177,20 @@ function generateDinosaurs() {
 generateFood();
 generateDinosaurs();
 
+// Register AI for all NPC dinosaurs
+dinosaurs.forEach((dino, id) => {
+    if (id.startsWith('npc_')) {
+        const dinoData = DINOSAURS[dino.dinosaurId];
+        if (dinoData) {
+            aiSystem.createAI(id, dinoData);
+        }
+    }
+});
+
+// Initialize ecosystem
+ecosystem.targetPlantCount = 300;
+ecosystem.targetAnimalCount = 80;
+
 // WebSocket handling
 wss.on('connection', (ws, req) => {
     console.log('Client connected');
@@ -2206,6 +2230,7 @@ wss.on('connection', (ws, req) => {
 
                 const player = new Player(playerId, name, dinosaurId);
                 players.set(playerId, player);
+                trackingSystem.logJoin(playerId, player.name, dinosaurId);
 
                 ws.send(JSON.stringify({
                     type: 'joined',
@@ -2252,12 +2277,14 @@ wss.on('connection', (ws, req) => {
                     food: Array.from(foodSpawns.values()).filter(f => !f.isEaten).map(f => ({
                         id: f.id,
                         type: f.type,
+                        amount: f.amount,
                         position: f.position
                     })),
                     water: Array.from(waterSpawns.values()).map(w => ({
                         id: w.id,
                         position: w.position
-                    }))
+                    })),
+                    ecosystem: ecosystem.getState()
                 }));
             }
 
@@ -2313,6 +2340,11 @@ wss.on('connection', (ws, req) => {
                     target.player.health -= damage;
                     if (target.player.health <= 0) {
                         target.player.isDead = true;
+                        trackingSystem.logKill(playerId, player.name, player.dinosaurId,
+                            target.id, target.player.name, target.player.dinosaurId,
+                            target.player.position);
+                        trackingSystem.logDeath(target.id, target.player.name, target.player.dinosaurId,
+                            'killed', { by: playerId, name: player.name }, target.player.position);
                         // Drop food
                         const meatId = `meat_${Date.now()}`;
                         const food = new FoodItem(meatId, 'meat', {
@@ -2430,6 +2462,220 @@ wss.on('connection', (ws, req) => {
                     }
                 }
             }
+
+            // === GENETICS HANDLERS ===
+            if (data.type === 'create_egg') {
+                const player = players.get(playerId);
+                if (!player || player.isDead) return;
+                const position = data.position || player.position;
+                const motherGenetics = geneticsSystem.getMutations(playerId);
+                const egg = geneticsSystem.createEgg(playerId, null, motherGenetics, [], position);
+                trackingSystem.logEgg(playerId, player.name, egg.code, 'created');
+                ws.send(JSON.stringify({
+                    type: 'egg_created',
+                    eggCode: egg.code,
+                    genetics: egg.genetics,
+                    position: egg.position
+                }));
+            }
+
+            if (data.type === 'hatch_egg') {
+                const eggCode = data.eggCode;
+                if (!eggCode) return;
+                const egg = geneticsSystem.activeEggs.get(eggCode);
+                if (!egg) {
+                    ws.send(JSON.stringify({ type: 'error', message: 'Ovo não encontrado' }));
+                    return;
+                }
+                const result = geneticsSystem.incubateEgg(eggCode, 1);
+                if (result) {
+                    const hatched = geneticsSystem.hatchEgg(eggCode, userData.userId);
+                    if (hatched) {
+                        trackingSystem.logEgg(playerId, players.get(playerId)?.name || 'unknown', eggCode, 'hatched');
+                        ws.send(JSON.stringify({
+                            type: 'egg_hatched',
+                            eggCode: egg.code,
+                            genetics: egg.genetics,
+                            success: true
+                        }));
+                    }
+                } else {
+                    ws.send(JSON.stringify({
+                        type: 'egg_progress',
+                        eggCode: eggCode,
+                        progress: geneticsSystem.activeEggs.get(eggCode)?.incubationProgress || 0
+                    }));
+                }
+            }
+
+            if (data.type === 'add_xp') {
+                const player = players.get(playerId);
+                if (!player) return;
+                const result = geneticsSystem.addXP(playerId, data.amount || 10);
+                ws.send(JSON.stringify({
+                    type: 'xp_update',
+                    xp: result.xp,
+                    level: result.level,
+                    gained: result.gained
+                }));
+            }
+
+            if (data.type === 'get_mutations') {
+                const player = players.get(playerId);
+                if (!player) return;
+                const available = geneticsSystem.getMutationsForPurchase(playerId);
+                const currentMutations = geneticsSystem.getMutations(playerId);
+                ws.send(JSON.stringify({
+                    type: 'mutations_list',
+                    current: currentMutations,
+                    available: available,
+                    xp: geneticsSystem.getXP(playerId)
+                }));
+            }
+
+            if (data.type === 'purchase_mutation') {
+                const player = players.get(playerId);
+                if (!player) return;
+                const result = geneticsSystem.purchaseMutation(playerId, data.mutationId);
+                if (result.success) {
+                    const stats = geneticsSystem.applyMutations(playerId, DINOSAURS[player.dinosaurId]);
+                    ws.send(JSON.stringify({
+                        type: 'mutation_purchased',
+                        mutationId: data.mutationId,
+                        xpRemaining: result.xpRemaining,
+                        updatedStats: stats
+                    }));
+                } else {
+                    ws.send(JSON.stringify({
+                        type: 'error',
+                        message: result.reason
+                    }));
+                }
+            }
+
+            // === TRIBE HANDLERS ===
+            if (data.type === 'tribe_create') {
+                const player = players.get(playerId);
+                if (!player) return;
+                const result = tribeManager.createTribe(data.name, data.tag, userData.userId, player.name);
+                if (result.success) {
+                    trackingSystem.logTribe(userData.userId, player.name, data.name, 'created');
+                    ws.send(JSON.stringify({ type: 'tribe_created', tribe: result.tribe }));
+                } else {
+                    ws.send(JSON.stringify({ type: 'error', message: result.reason }));
+                }
+            }
+
+            if (data.type === 'tribe_invite') {
+                const player = players.get(playerId);
+                if (!player) return;
+                const result = tribeManager.inviteToTribe(data.tribeName, userData.userId, data.targetUserId, data.targetUsername);
+                if (result.success) {
+                    ws.send(JSON.stringify({ type: 'tribe_invite_sent', inviteKey: result.inviteKey }));
+                    // Notify target player if online
+                    wss.clients.forEach(client => {
+                        if (client.readyState === 1 && client.userData?.userId === data.targetUserId) {
+                            client.send(JSON.stringify({
+                                type: 'tribe_invite_received',
+                                tribeName: data.tribeName,
+                                inviterName: player.name
+                            }));
+                        }
+                    });
+                } else {
+                    ws.send(JSON.stringify({ type: 'error', message: result.reason }));
+                }
+            }
+
+            if (data.type === 'tribe_accept') {
+                const result = tribeManager.acceptInvite(userData.userId, data.tribeName);
+                if (result.success) {
+                    trackingSystem.logTribe(userData.userId, userData.username, data.tribeName, 'joined');
+                    ws.send(JSON.stringify({ type: 'tribe_joined', tribe: result.tribe }));
+                } else {
+                    ws.send(JSON.stringify({ type: 'error', message: result.reason }));
+                }
+            }
+
+            if (data.type === 'tribe_leave') {
+                const tribeName = tribeManager.playerTribes.get(userData.userId) || '';
+                const result = tribeManager.leaveTribe(userData.userId);
+                if (result.success) {
+                    trackingSystem.logTribe(userData.userId, userData.username, tribeName, result.disbanded ? 'disbanded' : 'left');
+                    ws.send(JSON.stringify({ type: 'tribe_left', disbanded: result.disbanded || false }));
+                } else {
+                    ws.send(JSON.stringify({ type: 'error', message: result.reason }));
+                }
+            }
+
+            if (data.type === 'tribe_kick') {
+                const result = tribeManager.kickFromTribe(data.tribeName, userData.userId, data.targetUserId);
+                if (result.success) {
+                    ws.send(JSON.stringify({ type: 'tribe_kicked', targetUserId: data.targetUserId }));
+                    wss.clients.forEach(client => {
+                        if (client.readyState === 1 && client.userData?.userId === data.targetUserId) {
+                            client.send(JSON.stringify({
+                                type: 'tribe_kicked_notification',
+                                tribeName: data.tribeName
+                            }));
+                        }
+                    });
+                } else {
+                    ws.send(JSON.stringify({ type: 'error', message: result.reason }));
+                }
+            }
+
+            if (data.type === 'get_tribe_info') {
+                const tribe = data.tribeName ? tribeManager.getTribeByName(data.tribeName) : tribeManager.getPlayerTribe(userData.userId);
+                if (tribe) {
+                    ws.send(JSON.stringify({ type: 'tribe_info', tribe }));
+                } else {
+                    ws.send(JSON.stringify({ type: 'tribe_info', tribe: null }));
+                }
+            }
+
+            // === TRACKING HANDLERS ===
+            if (data.type === 'get_stats') {
+                ws.send(JSON.stringify({
+                    type: 'stats',
+                    tracking: trackingSystem.getStats(),
+                    recentEvents: trackingSystem.getRecentEvents(20)
+                }));
+            }
+
+            if (data.type === 'chat') {
+                const player = players.get(playerId);
+                if (!player || !data.message) return;
+                trackingSystem.logChat(playerId, player.name, data.message, data.channel || 'global');
+                const chatMsg = {
+                    type: 'chat',
+                    playerId: playerId,
+                    playerName: player.name,
+                    dinosaurId: player.dinosaurId,
+                    message: data.message,
+                    channel: data.channel || 'global',
+                    timestamp: Date.now()
+                };
+                if (data.channel === 'tribe') {
+                    const tribe = tribeManager.getPlayerTribe(userData.userId);
+                    if (tribe) {
+                        wss.clients.forEach(client => {
+                            if (client.readyState === 1) {
+                                const clientTribe = tribeManager.getPlayerTribe(client.userData?.userId);
+                                if (clientTribe && clientTribe.name === tribe.name) {
+                                    client.send(JSON.stringify(chatMsg));
+                                }
+                            }
+                        });
+                    }
+                } else {
+                    wss.clients.forEach(client => {
+                        if (client.readyState === 1) {
+                            client.send(JSON.stringify(chatMsg));
+                        }
+                    });
+                }
+            }
         } catch (e) {
             console.error('Error handling message:', e);
         }
@@ -2437,6 +2683,10 @@ wss.on('connection', (ws, req) => {
 
     ws.on('close', () => {
         console.log('Client disconnected');
+        const leavingPlayer = players.get(playerId);
+        if (leavingPlayer) {
+            trackingSystem.logLeave(playerId, leavingPlayer.name);
+        }
         players.delete(playerId);
         dinosaurs.delete(playerId);
 
@@ -2466,6 +2716,9 @@ setInterval(() => {
 // Game loop - update everything
 setInterval(() => {
     const now = Date.now();
+
+    // Update ecosystem
+    ecosystem.update();
 
     // Update all players
     players.forEach((player, playerId) => {
@@ -2544,170 +2797,52 @@ setInterval(() => {
                 dino.stamina = Math.min(dino.stamina + dinoData.staminaRegenRate, dinoData.maxStamina);
             }
 
-            // AI
-            const ai = dino.ai;
+            // AI system
+            const result = aiSystem.update(dinoId, dino, dinoData, players, foodSpawns, waterSpawns, ecosystem.plants, ecosystem.animals, mapSize, DINOSAURS);
+            if (result) {
+                const { targetX, targetZ, shouldSprint, action } = result;
 
-            // Find nearest food/water/target/threat
-            if (!ai.nearestFood || Math.random() < 0.01) {
-                let minDist = 50;
-                foodSpawns.forEach((food, foodId) => {
-                    if (food.isEaten) return;
-                    const dist = Math.sqrt(
-                        Math.pow(food.position.x - dino.position.x, 2) +
-                        Math.pow(food.position.z - dino.position.z, 2)
-                    );
-                    if (dist < minDist) {
-                        minDist = dist;
-                        ai.nearestFood = { id: foodId, food: food };
-                    }
-                });
-            }
+                // Move towards target
+                const dx = targetX - dino.position.x;
+                const dz = targetZ - dino.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
 
-            if (!ai.nearestWater || Math.random() < 0.01) {
-                let minDist = 50;
-                waterSpawns.forEach((water, waterId) => {
-                    const dist = Math.sqrt(
-                        Math.pow(water.position.x - dino.position.x, 2) +
-                        Math.pow(water.position.z - dino.position.z, 2)
-                    );
-                    if (dist < minDist) {
-                        minDist = dist;
-                        ai.nearestWater = water;
-                    }
-                });
-            }
+                if (dist > 0.5) {
+                    const speed = shouldSprint ? dinoData.sprintSpeed * 0.005 : dinoData.speed * 0.005;
+                    dino.position.x += (dx / dist) * speed;
+                    dino.position.z += (dz / dist) * speed;
+                    dino.rotation = Math.atan2(dx, dz) * 180 / Math.PI;
+                }
 
-            if (!ai.nearestPrey || Math.random() < 0.01) {
-                let minDist = 50;
-                players.forEach((player, pid) => {
-                    if (pid === dinoId) return;
-                    if (player.isDead) return;
-                    if (dinoData.type === 'herbivore' && player.dinosaurId === dino.dinosaurId) return;
-                    const dist = Math.sqrt(
-                        Math.pow(player.position.x - dino.position.x, 2) +
-                        Math.pow(player.position.z - dino.position.z, 2)
-                    );
-                    if (dist < minDist) {
-                        minDist = dist;
-                        ai.nearestPrey = { id: pid, player: player };
-                    }
-                });
-            }
-
-            if (!ai.nearestThreat || Math.random() < 0.01) {
-                let minDist = 50;
-                players.forEach((player, pid) => {
-                    if (pid === dinoId) return;
-                    if (player.isDead) return;
-                    if (dinoData.type === 'carnivore' && player.dinosaurId === dino.dinosaurId) return;
-                    const dist = Math.sqrt(
-                        Math.pow(player.position.x - dino.position.x, 2) +
-                        Math.pow(player.position.z - dino.position.z, 2)
-                    );
-                    if (dist < minDist) {
-                        minDist = dist;
-                        ai.nearestThreat = { id: pid, player: player };
-                    }
-                });
-            }
-
-            // AI State machine
-            let targetX = dino.position.x;
-            let targetZ = dino.position.z;
-            let shouldSprint = false;
-
-            if (dinoData.type === 'carnivore' && ai.nearestPrey && ai.nearestPrey.player.health > 0) {
-                // Hunt prey
-                targetX = ai.nearestPrey.player.position.x;
-                targetZ = ai.nearestPrey.player.position.z;
-                shouldSprint = true;
-
-                if (Math.random() < 0.005 && !dino.isAttacking) {
-                    // Attack
+                if (action && action.type === 'attack' && action.target) {
                     dino.isAttacking = true;
-                    const damage = dinoData.attackDamage;
-                    ai.nearestPrey.player.health -= damage;
-                    if (ai.nearestPrey.player.health <= 0) {
-                        ai.nearestPrey.player.isDead = true;
-                        // Drop food
+                    if (action.target.player.health <= 0) {
                         const meatId = `meat_${Date.now()}`;
                         const food = new FoodItem(meatId, 'meat', {
-                            x: ai.nearestPrey.player.position.x,
-                            y: 0,
-                            z: ai.nearestPrey.player.position.z
+                            x: action.target.player.position.x, y: 0, z: action.target.player.position.z
                         });
                         food.amount = 100;
                         foodSpawns.set(meatId, food);
-                        ai.nearestPrey = null;
+                        trackingSystem.logKill(dinoId, dino.name, dino.dinosaurId,
+                            action.target.id, action.target.player.name, action.target.player.dinosaurId,
+                            action.target.player.position);
+                        trackingSystem.logDeath(action.target.id, action.target.player.name, action.target.player.dinosaurId,
+                            'hunted', { by: dinoId, name: dino.name }, action.target.player.position);
                     }
                     setTimeout(() => { dino.isAttacking = false; }, dinoData.attackCooldown * 1000);
                 }
-            } else if (dinoData.type === 'herbivore' && ai.nearestThreat) {
-                // Flee from threat
-                const dx = dino.position.x - ai.nearestThreat.player.position.x;
-                const dz = dino.position.z - ai.nearestThreat.player.position.z;
-                const dist = Math.sqrt(dx * dx + dz * dz);
-                if (dist > 0) {
-                    targetX = dino.position.x + (dx / dist) * 10;
-                    targetZ = dino.position.z + (dz / dist) * 10;
-                }
-                shouldSprint = true;
-            } else if (dino.hunger < dinoData.maxHunger * 0.5 && ai.nearestFood) {
-                // Hunt food
-                targetX = ai.nearestFood.food.position.x;
-                targetZ = ai.nearestFood.food.position.z;
-                shouldSprint = true;
-
-                // Eat food
-                if (Math.random() < 0.01) {
-                    dino.isEating = true;
-                    setTimeout(() => {
-                        dino.isEating = false;
-                        ai.nearestFood.food.isEaten = true;
-                        dino.hunger = Math.min(dino.hunger + ai.nearestFood.food.amount, dinoData.maxHunger);
-                        ai.nearestFood = null;
-                    }, 2000);
-                }
-            } else if (dino.thirst < dinoData.maxThirst * 0.5 && ai.nearestWater) {
-                // Go to water
-                targetX = ai.nearestWater.position.x;
-                targetZ = ai.nearestWater.position.z;
-                shouldSprint = true;
-            } else {
-                // Wander
-                if (ai.wanderTimer <= 0) {
-                    const wanderAngle = Math.random() * Math.PI * 2;
-                    const wanderDist = 5 + Math.random() * 10;
-                    targetX = dino.position.x + Math.cos(wanderAngle) * wanderDist;
-                    targetZ = dino.position.z + Math.sin(wanderAngle) * wanderDist;
-                    ai.wanderTimer = 3 + Math.random() * 3;
-                }
-                ai.wanderTimer -= 0.05;
             }
 
-            // Move towards target
-            const dx = targetX - dino.position.x;
-            const dz = targetZ - dino.position.z;
-            const dist = Math.sqrt(dx * dx + dz * dz);
-
-            if (dist > 0.5) {
-                const speed = shouldSprint ? dinoData.sprintSpeed * 0.005 : dinoData.speed * 0.005;
-                dino.position.x += (dx / dist) * speed;
-                dino.position.z += (dz / dist) * speed;
-
-                // Update rotation to face target
-                dino.rotation = Math.atan2(dx, dz) * 180 / Math.PI;
+            // Stamina drain while sprinting
+            if (dino.isSprinting) {
+                dino.stamina -= 0.5;
+                if (dino.stamina <= 0) { dino.stamina = 0; dino.isSprinting = false; }
             }
 
             // Map boundaries
             const halfMap = mapSize / 2;
             dino.position.x = Math.max(-halfMap, Math.min(halfMap, dino.position.x));
             dino.position.z = Math.max(-halfMap, Math.min(halfMap, dino.position.z));
-
-            // Clean up null references
-            if (ai.nearestFood && ai.nearestFood.food.isEaten) ai.nearestFood = null;
-            if (ai.nearestThreat && ai.nearestThreat.player.isDead) ai.nearestThreat = null;
-            if (ai.nearestPrey && ai.nearestPrey.player.isDead) ai.nearestPrey = null;
         }
     });
 
@@ -2754,7 +2889,8 @@ setInterval(() => {
         water: Array.from(waterSpawns.values()).map(w => ({
             id: w.id,
             position: w.position
-        }))
+        })),
+        ecosystem: ecosystem.getState()
     };
 
     wss.clients.forEach(client => {

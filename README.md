@@ -45,4 +45,13 @@ Certifique-se de não usar assets comerciais de terceiros em versões publicadas
 * `tmp-anim.html`: Client principal WebGL (Roda a lógica Three.js, VFX, UI).
 * `tmp-server.js`: Back-end WebSocket autoritativo (Gerencia física de colisões, dano, spawns e sincronicidade).
 * `dinodefs.js`: Dicionário completo definindo os status base das 60 espécies.
-* `ecosystem.js / ai-system.js`: Módulos modulares do servidor para IA de presas e ciclo de crescimento botânico.
+* `ecosystem.js`: 8 tipos de plantas + 8 tipos de animais com spawning/despawning por bioma.
+* `ai-system.js`: Máquina de estados formal para IA NPC (idle, wander, hunt, flee, eat, drink, socialize, sleep) com personalidades.
+* `genetics.js`: Sistema de ovos (DINO-XXXX), incubação, 16 mutações genéticas, XP/leveling.
+* `tribes.js`: Sistema de tribos/grupos (criar, convidar, aceitar, expulsar, sair).
+* `tracking.js`: Registro de eventos (kills, mortes, descobertas, chat, tribos).
+* `database.js`: Schema SQLite (13 tabelas) via sql.js, auto-save a cada 30s.
+* `auth.js`: Autenticação bcrypt + JWT (registro, login, logout).
+* `weather.js`: Sistema de clima com 7 tipos e temperatura.
+* `client.js`: Servidor HTTP estático (porta 80).
+* `models/`: Diretório para arquivos `.glb`.

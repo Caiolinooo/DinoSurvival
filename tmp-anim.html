@@ -40,107 +40,224 @@
             pointer-events: auto;
         }
 
-        /* Health bar */
-        .health-bar {
-            position: absolute;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 300px;
-            height: 20px;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .health-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff3333, #ff6666);
-            border-radius: 10px;
-            transition: width 0.3s ease;
-        }
-
-        /* Stamina bar */
-        .stamina-bar {
-            position: absolute;
-            bottom: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 300px;
-            height: 15px;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .stamina-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ffaa00, #ffcc44);
-            border-radius: 8px;
-            transition: width 0.3s ease;
-        }
-
-        /* Hunger bar */
-        .hunger-bar {
+        /* Circular HUD (The Isle style) */
+        .hud-circles {
             position: absolute;
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            width: 300px;
-            height: 15px;
+            display: flex;
+            gap: 18px;
+            z-index: 150;
+            pointer-events: none;
+        }
+
+        .hud-circle {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            position: relative;
             background: rgba(0, 0, 0, 0.6);
-            border-radius: 8px;
-            overflow: hidden;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .hunger-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #44aa44, #66cc66);
-            border-radius: 8px;
-            transition: width 0.3s ease;
-        }
-
-        /* Thirst bar */
-        .thirst-bar {
+        .hud-circle svg {
             position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 300px;
-            height: 15px;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .thirst-fill {
+            width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, #4488ff, #66aaff);
-            border-radius: 8px;
-            transition: width 0.3s ease;
+            transform: rotate(-90deg);
         }
 
-        /* Dinosaur name and stats */
+        .hud-circle svg circle {
+            fill: none;
+            stroke-width: 4;
+            cx: 26;
+            cy: 26;
+            r: 22;
+        }
+
+        .hud-circle .bg {
+            stroke: rgba(255, 255, 255, 0.08);
+        }
+
+        .hud-circle .fill {
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s ease;
+        }
+
+        /* Health - red */
+        .hud-health .fill { stroke: #ff3333; }
+        .hud-health .icon { color: #ff5555; }
+
+        /* Stamina - yellow */
+        .hud-stamina .fill { stroke: #ffcc00; }
+        .hud-stamina .icon { color: #ffdd44; }
+
+        /* Hunger - green */
+        .hud-hunger .fill { stroke: #44cc44; }
+        .hud-hunger .icon { color: #66ee66; }
+
+        /* Thirst - blue */
+        .hud-thirst .fill { stroke: #4488ff; }
+        .hud-thirst .icon { color: #66aaff; }
+
+        .hud-circle .icon {
+            font-size: 16px;
+            z-index: 1;
+            text-shadow: 0 0 4px rgba(0,0,0,0.8);
+            line-height: 1;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Mobile virtual joystick */
+        #mobile-joystick-area {
+            position: absolute;
+            bottom: 100px;
+            left: 20px;
+            width: 140px;
+            height: 140px;
+            z-index: 200;
+            display: none;
+            touch-action: none;
+        }
+        #mobile-joystick-area .base {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            border: 2px solid rgba(255,255,255,0.2);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+        }
+        #mobile-joystick-area .knob {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            border: 2px solid rgba(255,255,255,0.4);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            transition: none;
+        }
+        /* Touch camera area */
+        #mobile-camera-area {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%;
+            height: 100%;
+            z-index: 100;
+            display: none;
+            touch-action: none;
+        }
+        /* Mobile action buttons */
+        #mobile-actions {
+            position: absolute;
+            bottom: 20px;
+            right: 10px;
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: none;
+            align-items: flex-end;
+        }
+        #mobile-actions button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(0,0,0,0.5);
+            color: white;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            pointer-events: auto;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        #mobile-actions button:active {
+            background: rgba(255,255,255,0.2);
+            transform: scale(0.9);
+        }
+        #mobile-actions .btn-row {
+            display: flex;
+            gap: 6px;
+            pointer-events: none;
+        }
+        #mobile-actions .btn-row button {
+            pointer-events: auto;
+        }
+        #mobile-actions .btn-sprint {
+            width: 60px;
+            height: 60px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-color: rgba(255,200,0,0.4);
+        }
+        #mobile-actions .btn-jump {
+            border-color: rgba(100,200,255,0.4);
+        }
+        #mobile-actions .btn-attack {
+            border-color: rgba(255,50,50,0.4);
+        }
+        #mobile-actions .btn-roar {
+            width: 44px;
+            height: 44px;
+            font-size: 14px;
+        }
+        /* Show mobile controls on mobile */
+        body.is-mobile #mobile-joystick-area,
+        body.is-mobile #mobile-camera-area,
+        body.is-mobile #mobile-actions {
+            display: flex;
+        }
+        body.is-mobile .crosshair { display: none; }
+        body.is-mobile #gameCursor { display: none !important; }
+        body.is-mobile .dino-stats { 
+            top: 50px;
+            left: 10px;
+            font-size: 12px;
+        }
+        body.is-mobile .hud-circles { bottom: 100px; }
+        body.is-mobile .hud-circle { width: 44px; height: 44px; }
+        body.is-mobile .hud-circle .icon { font-size: 13px; }
+
+        /* Dino name top-left */
         .dino-stats {
             position: absolute;
             top: 20px;
             left: 20px;
             color: white;
             font-size: 14px;
+            z-index: 150;
+            pointer-events: none;
         }
-
         .dino-stats h2 {
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-size: 18px;
+            text-shadow: 2px 2px 6px rgba(0,0,0,0.9);
+            margin-bottom: 4px;
+            letter-spacing: 1px;
         }
-
-        .stat {
-            margin: 5px 0;
-        }
-
-        .stat-label {
-            font-weight: bold;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        .dino-stats .sub {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
         }
 
         /* Crosshair */
@@ -635,23 +752,20 @@
         }
         .menu-btn:hover { background: rgba(255, 255, 255, 0.2); }
         .controls-list div { margin: 4px 0; font-size: 14px; }
-        .sprint-indicator {
+        /* Sprint ring (around stamina) */
+        .hud-stamina .sprint-ring {
             position: absolute;
-            bottom: 70px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 200px;
-            height: 10px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 5px;
-            overflow: hidden;
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            top: -8px;
+            left: -8px;
+            transition: border-color 0.2s;
+            pointer-events: none;
         }
-
-        .sprint-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff6600, #ff9900);
-            border-radius: 5px;
-            transition: width 0.3s ease;
+        .hud-stamina .sprint-ring.active {
+            border-color: rgba(255, 200, 0, 0.6);
         }
 
         /* Player count */
@@ -1163,59 +1277,51 @@
 
     <!-- HUD -->
     <div id="hud">
-        <!-- Health bar -->
-        <div class="health-bar">
-            <div class="health-fill" id="healthFill"></div>
+        <!-- Circular status (The Isle style) -->
+        <div class="hud-circles">
+            <!-- Health -->
+            <div class="hud-circle hud-health">
+                <svg viewBox="0 0 52 52">
+                    <circle class="bg" cx="26" cy="26" r="22"/>
+                    <circle class="fill" id="healthRing" cx="26" cy="26" r="22"/>
+                </svg>
+                <span class="icon">❤️</span>
+            </div>
+            <!-- Stamina -->
+            <div class="hud-circle hud-stamina">
+                <div class="sprint-ring" id="sprintRing"></div>
+                <svg viewBox="0 0 52 52">
+                    <circle class="bg" cx="26" cy="26" r="22"/>
+                    <circle class="fill" id="staminaRing" cx="26" cy="26" r="22"/>
+                </svg>
+                <span class="icon">⚡</span>
+            </div>
+            <!-- Hunger -->
+            <div class="hud-circle hud-hunger">
+                <svg viewBox="0 0 52 52">
+                    <circle class="bg" cx="26" cy="26" r="22"/>
+                    <circle class="fill" id="hungerRing" cx="26" cy="26" r="22"/>
+                </svg>
+                <span class="icon">🍖</span>
+            </div>
+            <!-- Thirst -->
+            <div class="hud-circle hud-thirst">
+                <svg viewBox="0 0 52 52">
+                    <circle class="bg" cx="26" cy="26" r="22"/>
+                    <circle class="fill" id="thirstRing" cx="26" cy="26" r="22"/>
+                </svg>
+                <span class="icon">💧</span>
+            </div>
         </div>
 
-        <!-- Stamina bar -->
-        <div class="stamina-bar">
-            <div class="stamina-fill" id="staminaFill"></div>
-        </div>
-
-        <!-- Hunger bar -->
-        <div class="hunger-bar">
-            <div class="hunger-fill" id="hungerFill"></div>
-        </div>
-
-        <!-- Thirst bar -->
-        <div class="thirst-bar">
-            <div class="thirst-fill" id="thirstFill"></div>
-        </div>
-
-        <!-- Sprint indicator -->
-        <div class="sprint-indicator">
-            <div class="sprint-fill" id="sprintFill"></div>
-        </div>
-
-        <!-- Dinosaur stats -->
+        <!-- Dinosaur name -->
         <div class="dino-stats">
             <h2 id="dinoName">-</h2>
-            <div class="stat">
-                <span class="stat-label">HP:</span>
-                <span id="healthStat">-</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">Stamina:</span>
-                <span id="staminaStat">-</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">Fome:</span>
-                <span id="hungerStat">-</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">Sede:</span>
-                <span id="thirstStat">-</span>
-            </div>
+            <div class="sub" id="dinoSub">-</div>
         </div>
 
         <!-- Crosshair -->
         <div class="crosshair"></div>
-
-        <!-- Minimap -->
-        <div class="minimap" id="minimap">
-            <div class="minimap-dot minimap-player" id="minimapPlayer"></div>
-        </div>
 
         <!-- Player count -->
         <div class="player-count">
@@ -1234,54 +1340,36 @@
         <!-- Temperature -->
         <div class="temperature" id="temperature">25°C</div>
 
-        <!-- Ecosystem -->
-        <div class="ecosystem" id="ecosystem">
-            <h3>🌿 Ecossistema</h3>
-            <div class="ecosystem-stat">
-                <span>Carnívoros:</span>
-                <span id="carnivoreCount">0</span>
-            </div>
-            <div class="ecosystem-stat">
-                <span>Herbívoros:</span>
-                <span id="herbivoreCount">0</span>
-            </div>
-            <div class="ecosystem-stat">
-                <span>Omnívoros:</span>
-                <span id="omnivoreCount">0</span>
-            </div>
-        </div>
-
-        <!-- Leaderboard -->
-        <div class="leaderboard" id="leaderboard">
-            <h3>🏆 Top Kills</h3>
-            <div id="leaderboardList">
-                <!-- Populated by JS -->
-            </div>
-        </div>
-
-        <!-- Inventory -->
-        <div class="inventory" id="inventory">
-            <h3>🎒 Inventário</h3>
-            <div class="inventory-item">
-                <div class="icon meat"></div>
-                <span>Carne: <span id="meatCount">0</span></span>
-            </div>
-            <div class="inventory-item">
-                <div class="icon berry"></div>
-                <span>Frutas: <span id="berryCount">0</span></span>
-            </div>
-            <div class="inventory-item">
-                <div class="icon fish"></div>
-                <span>Peixes: <span id="fishCount">0</span></span>
-            </div>
-            <div class="inventory-item">
-                <div class="icon insect"></div>
-                <span>Insetos: <span id="insectCount">0</span></span>
-            </div>
-        </div>
-
         <!-- Action prompts -->
         <div class="action-prompt" id="actionPrompt"></div>
+
+        <!-- Mobile virtual joystick -->
+        <div id="mobile-joystick-area">
+            <div class="base"></div>
+            <div class="knob" id="joystickKnob"></div>
+        </div>
+
+        <!-- Mobile touch camera area -->
+        <div id="mobile-camera-area"></div>
+
+        <!-- Mobile action buttons -->
+        <div id="mobile-actions">
+            <button class="btn-jump" ontouchstart="mobileAction('jump')" ontouchend="mobileAction('jump_end')">⬆️</button>
+            <button class="btn-attack" ontouchstart="mobileAction('attack')">⚔️</button>
+            <button class="btn-sprint" ontouchstart="mobileAction('sprint')" ontouchend="mobileAction('sprint_end')">Sprint</button>
+            <div class="btn-row">
+                <button class="btn-roar" ontouchstart="mobileAction('roar1')">📢</button>
+                <button class="btn-roar" ontouchstart="mobileAction('roar2')">😊</button>
+                <button class="btn-roar" ontouchstart="mobileAction('roar3')">😠</button>
+                <button class="btn-roar" ontouchstart="mobileAction('roar4')">🆘</button>
+            </div>
+            <div class="btn-row">
+                <button ontouchstart="mobileAction('eat')">🍽️</button>
+                <button ontouchstart="mobileAction('rest')">😴</button>
+                <button ontouchstart="mobileAction('nightvision')">🌙</button>
+                <button ontouchstart="mobileAction('menu')">⚙️</button>
+            </div>
+        </div>
 
         <!-- Attack indicator -->
         <div class="attack-indicator" id="attackIndicator">⚔️</div>
@@ -1409,8 +1497,13 @@
             isResting: false,
             GRAVITY: -20,
             mouseSensitivity: 1,
-            soundTimer: { chirp: 0, footstep: 0, ambient: false }
+            soundTimer: { chirp: 0, footstep: 0, ambient: false },
+            mobileMoveIntensity: 1
         };
+
+        // Mobile detection
+        const IS_MOBILE = navigator.maxTouchPoints > 0 || /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (IS_MOBILE) document.body.classList.add('is-mobile');
 
         // GLB model registry (maps species ID to GLB filename)
         const MODEL_REGISTRY = {
@@ -2286,22 +2379,18 @@ function initThreeJS() {
 
             const dino = GAME.player.dinosaurId;
             document.getElementById('dinoName').textContent = dino.name || dino.id;
-            document.getElementById('healthStat').textContent = Math.round(GAME.player.health);
-            document.getElementById('staminaStat').textContent = Math.round(GAME.player.stamina);
-            document.getElementById('hungerStat').textContent = Math.round(GAME.player.hunger);
-            document.getElementById('thirstStat').textContent = Math.round(GAME.player.thirst);
+            document.getElementById('dinoSub').textContent = `Tier ${dino.tier} • ${dino.type === 'carnivore' ? 'Carnívoro' : 'Herbívoro'}`;
 
-            document.getElementById('healthFill').style.width = `${(GAME.player.health / dino.maxHealth) * 100}%`;
-            document.getElementById('staminaFill').style.width = `${(GAME.player.stamina / dino.maxStamina) * 100}%`;
-            document.getElementById('hungerFill').style.width = `${(GAME.player.hunger / dino.maxHunger) * 100}%`;
-            document.getElementById('thirstFill').style.width = `${(GAME.player.thirst / dino.maxThirst) * 100}%`;
-            document.getElementById('sprintFill').style.width = `${(GAME.player.stamina / dino.maxStamina) * 100}%`;
-
-            // Update inventory
-            document.getElementById('meatCount').textContent = GAME.inventory.meat;
-            document.getElementById('berryCount').textContent = GAME.inventory.berry;
-            document.getElementById('fishCount').textContent = GAME.inventory.fish;
-            document.getElementById('insectCount').textContent = GAME.inventory.insect;
+            const circ = 2 * Math.PI * 22;
+            function setRing(id, pct) {
+                const el = document.getElementById(id);
+                if (el) el.style.strokeDasharray = circ;
+                if (el) el.style.strokeDashoffset = circ * (1 - Math.max(0, Math.min(1, pct)));
+            }
+            setRing('healthRing', GAME.player.health / dino.maxHealth);
+            setRing('staminaRing', GAME.player.stamina / dino.maxStamina);
+            setRing('hungerRing', GAME.player.hunger / dino.maxHunger);
+            setRing('thirstRing', GAME.player.thirst / dino.maxThirst);
         }
 
         // Start game
@@ -2359,14 +2448,19 @@ function initThreeJS() {
             }
 
             // Update stamina while sprinting
+            const sprintRing = document.getElementById('sprintRing');
             if (GAME.isSprinting) {
                 GAME.player.stamina -= 0.5 * delta;
                 if (GAME.player.stamina <= 0) {
                     GAME.player.stamina = 0;
                     GAME.isSprinting = false;
+                    if (sprintRing) sprintRing.classList.remove('active');
+                } else {
+                    if (sprintRing) sprintRing.classList.add('active');
                 }
             } else {
                 GAME.player.stamina = Math.min(GAME.player.stamina + 0.3 * delta, GAME.player.dinosaurId.maxStamina);
+                if (sprintRing) sprintRing.classList.remove('active');
             }
 
             // Update hunger
@@ -2632,6 +2726,143 @@ function initThreeJS() {
             }
         });
 
+        // Mobile joystick touch handler
+        let joystickTouchId = null;
+        let joystickCenter = { x: 0, y: 0 };
+        const joystickArea = document.getElementById('mobile-joystick-area');
+        const joystickKnob = document.getElementById('joystickKnob');
+
+        if (IS_MOBILE && joystickArea) {
+            joystickArea.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const t = e.changedTouches[0];
+                joystickTouchId = t.identifier;
+                const rect = joystickArea.getBoundingClientRect();
+                joystickCenter.x = rect.left + rect.width / 2;
+                joystickCenter.y = rect.top + rect.height / 2;
+                handleJoystickMove(t.clientX, t.clientY);
+            });
+            joystickArea.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                for (const t of e.changedTouches) {
+                    if (t.identifier === joystickTouchId) handleJoystickMove(t.clientX, t.clientY);
+                }
+            });
+            joystickArea.addEventListener('touchend', (e) => {
+                for (const t of e.changedTouches) {
+                    if (t.identifier === joystickTouchId) {
+                        joystickTouchId = null;
+                        resetJoystick();
+                    }
+                }
+            });
+            joystickArea.addEventListener('touchcancel', () => { resetJoystick(); });
+        }
+
+        function handleJoystickMove(clientX, clientY) {
+            const dx = clientX - joystickCenter.x;
+            const dy = clientY - joystickCenter.y;
+            const maxDist = 45;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const clamped = Math.min(dist, maxDist);
+            const angle = Math.atan2(dy, dx);
+            const nx = Math.cos(angle) * clamped;
+            const ny = Math.sin(angle) * clamped;
+            if (joystickKnob) {
+                joystickKnob.style.transform = `translate(calc(-50% + ${nx}px), calc(-50% + ${ny}px))`;
+            }
+            // Map joystick to WASD keys
+            const threshold = 0.3;
+            const normX = dist > 0 ? dx/dist : 0;
+            const normY = dist > 0 ? dy/dist : 0;
+            const intensity = Math.min(1, dist / maxDist);
+            GAME.keys['KeyW'] = normY < -threshold;
+            GAME.keys['KeyS'] = normY > threshold;
+            GAME.keys['KeyA'] = normX < -threshold;
+            GAME.keys['KeyD'] = normX > threshold;
+            GAME.mobileMoveIntensity = intensity;
+        }
+
+        function resetJoystick() {
+            if (joystickKnob) joystickKnob.style.transform = 'translate(-50%,-50%)';
+            GAME.keys['KeyW'] = false;
+            GAME.keys['KeyS'] = false;
+            GAME.keys['KeyA'] = false;
+            GAME.keys['KeyD'] = false;
+            GAME.mobileMoveIntensity = 1;
+        }
+
+        // Mobile camera touch handler
+        let cameraTouchId = null;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        const cameraArea = document.getElementById('mobile-camera-area');
+
+        if (IS_MOBILE && cameraArea) {
+            cameraArea.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const t = e.changedTouches[0];
+                cameraTouchId = t.identifier;
+                lastTouchX = t.clientX;
+                lastTouchY = t.clientY;
+            });
+            cameraArea.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                for (const t of e.changedTouches) {
+                    if (t.identifier === cameraTouchId) {
+                        const dx = t.clientX - lastTouchX;
+                        const dy = t.clientY - lastTouchY;
+                        lastTouchX = t.clientX;
+                        lastTouchY = t.clientY;
+                        const sens = GAME.mouseSensitivity || 1;
+                        GAME.cameraAngle.x -= dx * 0.005 * sens;
+                        GAME.cameraAngle.y = Math.max(0.1, Math.min(1.5, GAME.cameraAngle.y - dy * 0.005 * sens));
+                    }
+                }
+            });
+            cameraArea.addEventListener('touchend', (e) => {
+                for (const t of e.changedTouches) {
+                    if (t.identifier === cameraTouchId) cameraTouchId = null;
+                }
+            });
+            cameraArea.addEventListener('touchcancel', () => { cameraTouchId = null; });
+        }
+
+        // Mobile action button handler
+        function mobileAction(action) {
+            switch(action) {
+                case 'attack': attack(); break;
+                case 'jump':
+                    if (GAME.player && !GAME.isResting && GAME.player.verticalVelocity === 0) {
+                        const jumpPower = 8;
+                        if (jumpPower > 0) GAME.player.verticalVelocity = jumpPower;
+                    }
+                    break;
+                case 'jump_end': break;
+                case 'sprint': GAME.isSprinting = true; break;
+                case 'sprint_end': GAME.isSprinting = false; break;
+                case 'roar1':
+                    if (GAME.player && GAME.dinoSound) GAME.dinoSound.roar(GAME.player.dinosaurId.id || GAME.selectedDino, 'call');
+                    break;
+                case 'roar2':
+                    if (GAME.player && GAME.dinoSound) GAME.dinoSound.roar(GAME.player.dinosaurId.id || GAME.selectedDino, 'friendly');
+                    break;
+                case 'roar3':
+                    if (GAME.player && GAME.dinoSound) GAME.dinoSound.roar(GAME.player.dinosaurId.id || GAME.selectedDino, 'threaten');
+                    break;
+                case 'roar4':
+                    if (GAME.player && GAME.dinoSound) GAME.dinoSound.roar(GAME.player.dinosaurId.id || GAME.selectedDino, 'help');
+                    break;
+                case 'eat': eatOrDrink(); break;
+                case 'rest': GAME.isResting = !GAME.isResting; break;
+                case 'nightvision':
+                    GAME.nightVision = !GAME.nightVision;
+                    document.getElementById('nightVisionOverlay').classList.toggle('active', GAME.nightVision);
+                    break;
+                case 'menu': toggleMenu(); break;
+            }
+        }
+
         // Handle mouse events (initThreeJS)
         function attack() {
             if (!GAME.player || GAME.isDead || GAME.attackCooldown > 0) return;
@@ -2786,7 +3017,7 @@ function initThreeJS() {
 
         function resumeGame() {
             document.getElementById('menu').classList.add('hidden');
-            if (document.pointerLockElement !== GAME.renderer.domElement) {
+            if (!IS_MOBILE && document.pointerLockElement !== GAME.renderer.domElement) {
                 GAME.renderer.domElement.requestPointerLock();
             }
         }
@@ -3047,7 +3278,7 @@ function initThreeJS() {
 
         // Pointer lock for camera control - only on canvas click
         document.getElementById('gameCanvas').addEventListener('click', (e) => {
-            if (GAME.isPlaying && !GAME.mouse.isPointerLocked) {
+            if (!IS_MOBILE && GAME.isPlaying && !GAME.mouse.isPointerLocked) {
                 GAME.renderer.domElement.requestPointerLock();
             }
         });
@@ -3125,7 +3356,7 @@ function initThreeJS() {
 
         window.addEventListener('focus', () => {
             document.title = 'Dino Survival';
-            if (GAME.isPlaying && GAME.renderer) {
+            if (!IS_MOBILE && GAME.isPlaying && GAME.renderer) {
                 setTimeout(() => {
                     GAME.renderer.domElement.requestPointerLock();
                 }, 100);
@@ -3137,7 +3368,7 @@ function initThreeJS() {
             if (document.hidden) {
                 if (GAME.mouse.isPointerLocked) document.exitPointerLock();
             } else {
-                if (GAME.isPlaying && GAME.renderer) {
+                if (!IS_MOBILE && GAME.isPlaying && GAME.renderer) {
                     setTimeout(() => {
                         GAME.renderer.domElement.requestPointerLock();
                     }, 100);
